@@ -13,11 +13,17 @@ import json
 import logging
 import os
 import time
+from typing import List
 
 import ethereum_test_forks
-from ethereum_test_tools import JSONEncoder, ReferenceSpec, ReferenceSpecTypes
-from evm_block_builder import EvmBlockBuilder
-from evm_transition_tool import EvmTransitionTool
+from ethereum_test_tools import (
+    DecoratedFillerBase,
+    JSONEncoder,
+    ReferenceSpec,
+    ReferenceSpecTypes,
+)
+from evm_block_builder import BlockBuilder, EvmBlockBuilder
+from evm_transition_tool import EvmTransitionTool, TransitionTool
 
 from .modules import find_modules, is_module_modified
 
@@ -73,7 +79,7 @@ class Filler:
                 f"Filled test fixtures in {elapsed_time:.2f} seconds."
             )
 
-    def get_fillers(self):
+    def get_fillers(self) -> List[DecoratedFillerBase]:
         """
         Returns a list of all fillers found in the specified package
         and modules.
@@ -137,38 +143,48 @@ class Filler:
                     """
                 )
             for obj in module_dict.values():
-                if callable(obj) and hasattr(obj, "__filler_metadata__"):
+                if isinstance(obj, DecoratedFillerBase):
                     if (
                         self.options.test_case
-                        and self.options.test_case
-                        not in obj.__filler_metadata__["name"]
+                        and self.options.test_case not in obj.name
                     ):
                         continue
-                    if len(obj.__filler_metadata__["forks"]) == 0:
+                    if len(obj.forks) == 0:
                         continue
-                    obj.__filler_metadata__["module_path"] = [
+                    if obj.eips:
+                        if not self.options.fill_eips:
+                            continue
+                        if not all(
+                            eip in self.options.fill_eips for eip in obj.eips
+                        ):
+                            continue
+                    obj.module_path = [
                         package_name,
                         module_name,
                     ]
-                    obj.__filler_metadata__["spec"] = module_spec
+                    obj.reference_spec = module_spec
                     fillers.append(obj)
         return fillers
 
-    def fill_fixture(self, filler, t8n, b11r):
+    def fill_fixture(
+        self,
+        filler: DecoratedFillerBase,
+        t8n: TransitionTool,
+        b11r: BlockBuilder,
+    ):
         """
         Fills the specified fixture using the given filler,
         transaction tool, and block builder.
         """
-        name = filler.__filler_metadata__["name"]
-        module_path = filler.__filler_metadata__["module_path"]
-        module_spec = filler.__filler_metadata__["spec"]
+        module_path = filler.module_path
+        assert module_path is not None
         output_dir = os.path.join(
             self.options.output,
             *(module_path if not self.options.no_output_structure else ""),
         )
         os.makedirs(output_dir, exist_ok=True)
-        path = os.path.join(output_dir, f"{name}.json")
-        full_name = ".".join(module_path + [name])
+        path = os.path.join(output_dir, f"{filler.name}.json")
+        full_name = ".".join(module_path + [filler.name])
 
         # Only skip if the fixture file already exists, the module
         # has not been modified since the last test filler run, and
@@ -184,7 +200,7 @@ class Filler:
             self.log.debug(f"skipping - {full_name}")
             return
 
-        fixture = filler(t8n, b11r, "NoProof", module_spec)
+        fixture = filler.fill(t8n, b11r, "NoProof")
         if fixture is not None:
             self.log.debug(f"filled - {full_name}")
             with open(path, "w", encoding="utf-8") as f:

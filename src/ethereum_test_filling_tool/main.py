@@ -65,6 +65,13 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--fill-eips",
+        nargs="+",
+        type=int,
+        help="force filling tests that cointain these EIPs",
+    )
+
+    parser.add_argument(
         "--traces",
         action="store_true",
         help="collect traces of the execution information from the \

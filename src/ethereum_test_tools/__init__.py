@@ -20,7 +20,12 @@ from .common import (
     to_address,
     to_hash,
 )
-from .filling.decorators import test_from, test_from_until, test_only
+from .filling.decorators import (
+    DecoratedFillerBase,
+    test_from,
+    test_from_until,
+    test_only,
+)
 from .filling.fill import fill_test
 from .reference_spec import ReferenceSpec, ReferenceSpecTypes
 from .spec import BlockchainTest, StateTest
@@ -33,6 +38,7 @@ __all__ = (
     "BlockchainTest",
     "Code",
     "CodeGasMeasure",
+    "DecoratedFillerBase",
     "Environment",
     "Initcode",
     "JSONEncoder",
