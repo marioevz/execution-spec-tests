@@ -801,15 +801,6 @@ class FixtureTransaction:
     tx: Transaction
 
 
-@dataclass
-class FixtureTransaction:
-    """
-    Representation of an Ethereum transaction within a test Fixture.
-    """
-
-    tx: Transaction
-
-
 @dataclass(kw_only=True)
 class Header:
     """
