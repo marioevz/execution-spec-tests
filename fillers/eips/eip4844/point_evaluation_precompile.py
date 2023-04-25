@@ -10,7 +10,7 @@ from typing import List
 
 import yaml
 
-from ethereum_test_forks import Fork, ShardingFork
+from ethereum_test_forks import Cancun, Fork
 from ethereum_test_tools import (
     Account,
     Block,
@@ -242,14 +242,14 @@ def current_python_script_directory() -> str:
     return os.path.dirname(os.path.realpath(__file__))
 
 
-# @test_from(fork=ShardingFork)
+# @test_from(fork=Cancun)
 def test_point_eval_precompile_gas_usage(_: Fork):
     """
     Test Precompile Gas Usage.
     """
 
 
-@test_from(fork=ShardingFork)
+@test_from(fork=Cancun)
 def test_point_eval_precompile(_: Fork):
     """
     Tests for the Point Evaluation Precompile.
