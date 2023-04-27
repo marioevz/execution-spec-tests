@@ -5,9 +5,7 @@ Source tests: https://github.com/ethereum/tests/pull/1082
 """
 from typing import Dict
 
-import pytest
-
-from ethereum_test_forks import Shanghai, forks_from, is_fork
+from ethereum_test_forks import Shanghai, is_fork
 from ethereum_test_tools import (
     Account,
     CodeGasMeasure,
@@ -16,6 +14,7 @@ from ethereum_test_tools import (
     TestAddress,
     Transaction,
     Yul,
+    test_from,
     to_address,
     to_hash,
 )
@@ -24,18 +23,9 @@ from ethereum_test_tools.vm.opcode import Opcodes as Op
 REFERENCE_SPEC_GIT_PATH = "EIPS/eip-3651.md"
 REFERENCE_SPEC_VERSION = "cd7d6a465c03d86d852a1d6b5179bc78d760e658"
 
-pytestmark = pytest.mark.parametrize("fork", forks_from(Shanghai))
 
-
-@pytest.fixture(autouse=True)
-def eips():
-    """
-    Specify the EIPs to activate for the test fillers defined in this module.
-    """
-    return []
-
-
-def test_warm_coinbase_call_out_of_gas(state_test, fork):
+@test_from(fork=Shanghai)
+def test_warm_coinbase_call_out_of_gas(fork):
     """
     Test warm coinbase.
     """
@@ -140,7 +130,7 @@ def test_warm_coinbase_call_out_of_gas(state_test, fork):
                 }
             )
 
-        state_test.spec = StateTest(
+        yield StateTest(
             env=env,
             pre=pre,
             post=post,
@@ -149,52 +139,8 @@ def test_warm_coinbase_call_out_of_gas(state_test, fork):
         )
 
 
-# List of opcodes that are affected by
-gas_measured_opcodes: Dict[str, CodeGasMeasure] = {
-    "EXTCODESIZE": CodeGasMeasure(
-        code=Op.EXTCODESIZE(Op.COINBASE),
-        overhead_cost=2,
-        extra_stack_items=1,
-    ),
-    "EXTCODECOPY": CodeGasMeasure(
-        code=Op.EXTCODECOPY(Op.COINBASE, 0, 0, 0),
-        overhead_cost=2 + 3 + 3 + 3,
-    ),
-    "EXTCODEHASH": CodeGasMeasure(
-        code=Op.EXTCODEHASH(Op.COINBASE),
-        overhead_cost=2,
-        extra_stack_items=1,
-    ),
-    "BALANCE": CodeGasMeasure(
-        code=Op.BALANCE(Op.COINBASE),
-        overhead_cost=2,
-        extra_stack_items=1,
-    ),
-    "CALL": CodeGasMeasure(
-        code=Op.CALL(0xFF, Op.COINBASE, 0, 0, 0, 0, 0),
-        overhead_cost=3 + 2 + 3 + 3 + 3 + 3 + 3,
-        extra_stack_items=1,
-    ),
-    "CALLCODE": CodeGasMeasure(
-        code=Op.CALLCODE(0xFF, Op.COINBASE, 0, 0, 0, 0, 0),
-        overhead_cost=3 + 2 + 3 + 3 + 3 + 3 + 3,
-        extra_stack_items=1,
-    ),
-    "DELEGATECALL": CodeGasMeasure(
-        code=Op.DELEGATECALL(0xFF, Op.COINBASE, 0, 0, 0, 0),
-        overhead_cost=3 + 2 + 3 + 3 + 3 + 3,
-        extra_stack_items=1,
-    ),
-    "STATICCALL": CodeGasMeasure(
-        code=Op.STATICCALL(0xFF, Op.COINBASE, 0, 0, 0, 0),
-        overhead_cost=3 + 2 + 3 + 3 + 3 + 3,
-        extra_stack_items=1,
-    ),
-}
-
-
-@pytest.mark.parametrize("opcode", gas_measured_opcodes)
-def test_warm_coinbase_gas_usage(state_test, fork, opcode):
+@test_from(fork=Shanghai)
+def test_warm_coinbase_gas_usage(fork):
     """
     Test gas usage of different opcodes assuming warm coinbase.
     """
@@ -206,40 +152,84 @@ def test_warm_coinbase_gas_usage(state_test, fork, opcode):
         timestamp=1000,
     )
 
-    measure_address = to_address(0x100)
-    pre = {
-        TestAddress: Account(balance=1000000000000000000000),
-        measure_address: Account(
-            code=gas_measured_opcodes[opcode],
+    # List of opcodes that are affected by
+    gas_measured_opcodes: Dict[str, CodeGasMeasure] = {
+        "EXTCODESIZE": CodeGasMeasure(
+            code=Op.EXTCODESIZE(Op.COINBASE),
+            overhead_cost=2,
+            extra_stack_items=1,
+        ),
+        "EXTCODECOPY": CodeGasMeasure(
+            code=Op.EXTCODECOPY(Op.COINBASE, 0, 0, 0),
+            overhead_cost=2 + 3 + 3 + 3,
+        ),
+        "EXTCODEHASH": CodeGasMeasure(
+            code=Op.EXTCODEHASH(Op.COINBASE),
+            overhead_cost=2,
+            extra_stack_items=1,
+        ),
+        "BALANCE": CodeGasMeasure(
+            code=Op.BALANCE(Op.COINBASE),
+            overhead_cost=2,
+            extra_stack_items=1,
+        ),
+        "CALL": CodeGasMeasure(
+            code=Op.CALL(0xFF, Op.COINBASE, 0, 0, 0, 0, 0),
+            overhead_cost=3 + 2 + 3 + 3 + 3 + 3 + 3,
+            extra_stack_items=1,
+        ),
+        "CALLCODE": CodeGasMeasure(
+            code=Op.CALLCODE(0xFF, Op.COINBASE, 0, 0, 0, 0, 0),
+            overhead_cost=3 + 2 + 3 + 3 + 3 + 3 + 3,
+            extra_stack_items=1,
+        ),
+        "DELEGATECALL": CodeGasMeasure(
+            code=Op.DELEGATECALL(0xFF, Op.COINBASE, 0, 0, 0, 0),
+            overhead_cost=3 + 2 + 3 + 3 + 3 + 3,
+            extra_stack_items=1,
+        ),
+        "STATICCALL": CodeGasMeasure(
+            code=Op.STATICCALL(0xFF, Op.COINBASE, 0, 0, 0, 0),
+            overhead_cost=3 + 2 + 3 + 3 + 3 + 3,
+            extra_stack_items=1,
         ),
     }
 
-    if is_fork(fork, Shanghai):
-        expected_gas = 100  # Warm account access cost after EIP-3651
-    else:
-        expected_gas = 2600  # Cold account access cost before EIP-3651
+    for opcode in gas_measured_opcodes:
+        measure_address = to_address(0x100)
+        pre = {
+            TestAddress: Account(balance=1000000000000000000000),
+            measure_address: Account(
+                code=gas_measured_opcodes[opcode],
+            ),
+        }
 
-    post = {
-        measure_address: Account(
-            storage={
-                0x00: expected_gas,
-            }
+        if is_fork(fork, Shanghai):
+            expected_gas = 100  # Warm account access cost after EIP-3651
+        else:
+            expected_gas = 2600  # Cold account access cost before EIP-3651
+
+        post = {
+            measure_address: Account(
+                storage={
+                    0x00: expected_gas,
+                }
+            )
+        }
+        tx = Transaction(
+            ty=0x0,
+            chain_id=0x0,
+            nonce=0,
+            to=measure_address,
+            gas_limit=100000000,
+            gas_price=10,
+            protected=False,
         )
-    }
-    tx = Transaction(
-        ty=0x0,
-        chain_id=0x0,
-        nonce=0,
-        to=measure_address,
-        gas_limit=100000000,
-        gas_price=10,
-        protected=False,
-    )
 
-    state_test.spec = StateTest(
-        env=env,
-        pre=pre,
-        post=post,
-        txs=[tx],
-        tag="opcode_" + opcode.lower(),
-    )
+        yield StateTest(
+            env=env,
+            pre=pre,
+            post=post,
+            txs=[tx],
+            tag="opcode_" + opcode.lower(),
+        )
