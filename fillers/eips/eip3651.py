@@ -4,7 +4,9 @@ EIP: https://eips.ethereum.org/EIPS/eip-3651
 Source tests: https://github.com/ethereum/tests/pull/1082
 """
 
-from ethereum_test_forks import Shanghai, is_fork
+import pytest
+
+from ethereum_test_forks import Shanghai, forks_from, is_fork
 from ethereum_test_tools import (
     Account,
     CodeGasMeasure,
@@ -18,6 +20,7 @@ from ethereum_test_tools.vm.opcode import Opcodes as Op
 REFERENCE_SPEC_GIT_PATH = "EIPS/eip-3651.md"
 REFERENCE_SPEC_VERSION = "d94c694c6f12291bb6626669c3e8587eef3adff1"
 
+pytestmark = pytest.mark.parametrize("fork", forks_from(Shanghai))
 
 # Amount of gas required to make a call to a warm account.
 # Calling a cold account with this amount of gas results in exception.
@@ -227,36 +230,27 @@ def test_warm_coinbase_gas_usage(state_test, fork, opcode, code_gas_measure):
         ),
     }
 
-    for opcode in gas_measured_opcodes:
-        measure_address = to_address(0x100)
-        pre = {
-            TestAddress: Account(balance=1000000000000000000000),
-            measure_address: Account(
-                code=gas_measured_opcodes[opcode],
-            ),
-        }
+    if is_fork(fork, Shanghai):
+        expected_gas = 100  # Warm account access cost after EIP-3651
+    else:
+        expected_gas = 2600  # Cold account access cost before EIP-3651
 
-        if is_fork(fork, Shanghai):
-            expected_gas = 100  # Warm account access cost after EIP-3651
-        else:
-            expected_gas = 2600  # Cold account access cost before EIP-3651
-
-        post = {
-            measure_address: Account(
-                storage={
-                    0x00: expected_gas,
-                }
-            )
-        }
-        tx = Transaction(
-            ty=0x0,
-            chain_id=0x0,
-            nonce=0,
-            to=measure_address,
-            gas_limit=100000000,
-            gas_price=10,
-            protected=False,
+    post = {
+        measure_address: Account(
+            storage={
+                0x00: expected_gas,
+            }
         )
+    }
+    tx = Transaction(
+        ty=0x0,
+        chain_id=0x0,
+        nonce=0,
+        to=measure_address,
+        gas_limit=100000000,
+        gas_price=10,
+        protected=False,
+    )
 
     state_test(
         env=env,
