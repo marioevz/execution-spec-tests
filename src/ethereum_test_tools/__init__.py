@@ -25,7 +25,7 @@ from .common import (
 from .filling.decorators import test_from, test_from_until, test_only
 from .filling.fill import fill_test
 from .reference_spec import ReferenceSpec, ReferenceSpecTypes
-from .spec import BlockchainTest, StateTest
+from .spec import BlockchainTest, Filler, StateTest
 from .vm import Opcode, Opcodes
 
 __all__ = (
@@ -36,6 +36,7 @@ __all__ = (
     "Code",
     "CodeGasMeasure",
     "Environment",
+    "Filler",
     "Header",
     "Initcode",
     "JSONEncoder",

@@ -120,3 +120,4 @@ class BaseTest:
 
 
 TestSpec = Callable[[Fork], Generator[BaseTest, None, None]]
+Filler = Callable[[BaseTest], None]
