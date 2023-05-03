@@ -127,40 +127,6 @@ def reference_spec():
 
 
 @pytest.fixture(scope="function")
-def state_test():
-    """
-    This fixture is used to store a StateTest object from within a test
-    function so that it can be filled post test function execution in
-    the pytest_runtest_call() hook.
-
-    Every test that defines a StateTest filler must explicitly specify this
-    fixture in its function arguments and set the StateTestWrapper's spec
-    property.
-
-    Implementation detail: It must be scoped on test function level to avoid
-    leakage between tests.
-    """
-
-    class StateTestWrapper:
-        spec = None
-
-    return StateTestWrapper()
-
-
-@pytest.fixture(scope="function")
-def blockchain_test():
-    """
-    A fixture used to held define BlockchainTests analogous to the state_test
-    fixture for StateTests. See the state_test fixture docstring for details.
-    """
-
-    class BlockchainTestWrapper:
-        spec = None
-
-    return BlockchainTestWrapper()
-
-
-@pytest.fixture(scope="function")
 def filler():
     """
     A fixture used to pass the filler callback used to fill test specs
