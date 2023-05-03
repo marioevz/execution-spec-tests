@@ -8,6 +8,7 @@ from ethereum_test_forks import Berlin, Fork, forks_from
 from ethereum_test_tools import (
     Account,
     Environment,
+    Filler,
     StateTest,
     TestAddress,
     Transaction,
@@ -16,7 +17,7 @@ from ethereum_test_tools import (
 
 
 @pytest.mark.parametrize("fork", forks_from(Berlin))
-def test_yul(state_test, fork: Fork):
+def test_yul(filler: Filler, fork: Fork):
     """
     Test YUL compiled bytecode.
     """
@@ -59,4 +60,4 @@ def test_yul(state_test, fork: Fork):
         ),
     }
 
-    state_test.spec = StateTest(env=env, pre=pre, post=post, txs=[tx])
+    filler(StateTest(env=env, pre=pre, post=post, txs=[tx]))
