@@ -55,8 +55,10 @@ delitem
 dirname
 fromhex
 getitem
+metaclass
 radd
 setitem
+splitext
 zfill
 
 lll
