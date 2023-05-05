@@ -237,3 +237,13 @@ staticcall
 revert
 invalid
 selfdestruct
+
+addoption
+autouse
+dest
+funcargs
+getgroup
+getoption
+hookimpl
+hookwrapper
+runtest
