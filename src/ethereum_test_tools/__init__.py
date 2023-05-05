@@ -25,7 +25,12 @@ from .common import (
 from .filling.decorators import test_from, test_from_until, test_only
 from .filling.fill import fill_test
 from .reference_spec import ReferenceSpec, ReferenceSpecTypes
-from .spec import BlockchainTest, StateTest
+from .spec import (
+    BlockchainTest,
+    BlockchainTestFiller,
+    StateTest,
+    StateTestFiller,
+)
 from .vm import Opcode, Opcodes
 
 __all__ = (
@@ -33,6 +38,7 @@ __all__ = (
     "Account",
     "Block",
     "BlockchainTest",
+    "BlockchainTestFiller",
     "Code",
     "CodeGasMeasure",
     "Environment",
@@ -44,6 +50,7 @@ __all__ = (
     "ReferenceSpec",
     "ReferenceSpecTypes",
     "StateTest",
+    "StateTestFiller",
     "Storage",
     "TestAddress",
     "Transaction",
