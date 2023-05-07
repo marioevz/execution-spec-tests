@@ -158,7 +158,10 @@ def fixture_collector(request):
     Returns the configured fixture collector instance used for all tests
     in one test module.
     """
-    yield FixtureCollector(output_dir=request.config.getoption("output"))
+    fixture_collector = FixtureCollector(
+        output_dir=request.config.getoption("output")
+    )
+    yield fixture_collector
     fixture_collector.dump_fixtures()
 
 
