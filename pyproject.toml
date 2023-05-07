@@ -15,3 +15,7 @@ console_output_style = "count"
 minversion = "7.0"
 testpaths = ["fillers/example", "fillers/eips/eip3651.py", "fillers/eips/eip3855.py", "fillers/vm/chain_id.py"]
 python_files = "*.py"
+markers = [
+    "state_test: test cases that implement a single state transition test",
+    "blockchain_test: test cases that implement test block transitions",
+]
