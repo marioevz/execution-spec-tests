@@ -241,6 +241,7 @@ invalid
 selfdestruct
 
 addoption
+argname
 autouse
 dest
 funcargs
@@ -248,4 +249,5 @@ getgroup
 getoption
 hookimpl
 hookwrapper
+originalname
 runtest

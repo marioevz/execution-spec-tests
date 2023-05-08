@@ -14,6 +14,7 @@ import pytest
 
 from ethereum_test_forks import ArrowGlacier
 from ethereum_test_tools import (
+    BaseTest,
     BlockchainTest,
     BlockchainTestFiller,
     Fixture,
@@ -28,6 +29,9 @@ from evm_transition_tool import EvmTransitionTool
 
 
 def pytest_addoption(parser):
+    """
+    Adds command-line options to pytest.
+    """
     group = parser.getgroup(
         "evm", "Arguments defining evm executable behavior"
     )
@@ -217,6 +221,12 @@ def reference_spec(request):
     return None
 
 
+SPEC_TYPES: List[Type[BaseTest]] = [StateTest, BlockchainTest]
+SPEC_TYPES_PARAMETERS: List[str] = [
+    s.pytest_parameter_name() for s in SPEC_TYPES
+]
+
+
 @pytest.fixture(scope="function")
 def state_test(
     request, t8n, b11r, fork, engine, reference_spec, eips, fixture_collector
@@ -302,3 +312,11 @@ def pytest_runtest_call(item):
         pytest.skip(f"Fork '{fork}' not supported by t8n, skipped")
     if fork == ArrowGlacier:
         pytest.skip(f"Fork '{fork}' not supported by hive, skipped")
+
+    # Check that the test defines either test type as parameter.
+    if not any([i for i in item.funcargs if i in SPEC_TYPES_PARAMETERS]):
+        pytest.fail(
+            "Test must define either one of the following parameters to "
+            + "properly generate a test: "
+            + ", ".join(SPEC_TYPES_PARAMETERS)
+        )
