@@ -55,8 +55,10 @@ delitem
 dirname
 fromhex
 getitem
+metaclass
 radd
 setitem
+splitext
 zfill
 
 lll
@@ -237,3 +239,15 @@ staticcall
 revert
 invalid
 selfdestruct
+
+addoption
+argname
+autouse
+dest
+funcargs
+getgroup
+getoption
+hookimpl
+hookwrapper
+originalname
+runtest
