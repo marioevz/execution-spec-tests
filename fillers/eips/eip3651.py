@@ -3,7 +3,6 @@ Test EIP-3651: Warm COINBASE
 EIP: https://eips.ethereum.org/EIPS/eip-3651
 Source tests: https://github.com/ethereum/tests/pull/1082
 """
-from typing import Dict
 
 import pytest
 
@@ -12,7 +11,6 @@ from ethereum_test_tools import (
     Account,
     CodeGasMeasure,
     Environment,
-    StateTest,
     TestAddress,
     Transaction,
     to_address,
@@ -20,7 +18,7 @@ from ethereum_test_tools import (
 from ethereum_test_tools.vm.opcode import Opcodes as Op
 
 REFERENCE_SPEC_GIT_PATH = "EIPS/eip-3651.md"
-REFERENCE_SPEC_VERSION = "cd7d6a465c03d86d852a1d6b5179bc78d760e658"
+REFERENCE_SPEC_VERSION = "d94c694c6f12291bb6626669c3e8587eef3adff1"
 
 pytestmark = pytest.mark.parametrize("fork", forks_from(Shanghai))
 
@@ -130,7 +128,7 @@ def test_warm_coinbase_call_out_of_gas(
             }
         )
 
-    state_test.spec = StateTest(
+    state_test(
         env=env,
         pre=pre,
         post=post,
@@ -254,7 +252,7 @@ def test_warm_coinbase_gas_usage(state_test, fork, opcode, code_gas_measure):
         protected=False,
     )
 
-    state_test.spec = StateTest(
+    state_test(
         env=env,
         pre=pre,
         post=post,
