@@ -293,6 +293,23 @@ def blockchain_test(
     return BlockchainTestWrapper
 
 
+def pytest_collection_modifyitems(items, config):
+    """
+    A pytest hook called during collection, after all items have been
+    collected.
+
+    Here we dynamically apply "state_test" or "blockchain_test" markers
+    to a test if the test function uses the corresponding fixture.
+    """
+    for item in items:
+        if "state_test" in item.fixturenames:
+            marker = pytest.mark.state_test()
+            item.add_marker(marker)
+        elif "blockchain_test" in item.fixturenames:
+            marker = pytest.mark.blockchain_test()
+            item.add_marker(marker)
+
+
 def pytest_make_parametrize_id(config, val, argname):
     """
     Pytest hook called when generating test ids. We use this to generate
@@ -305,6 +322,19 @@ def pytest_runtest_call(item):
     """
     Pytest hook called in the context of test execution.
     """
+
+    class InvalidFiller(Exception):
+        def __init__(self, message):
+            super().__init__(message)
+
+    if (
+        "state_test" in item.fixturenames
+        and "blockchain_test" in item.fixturenames
+    ):
+        raise InvalidFiller(
+            "A filler should only implement either a state test or "
+            "a blockchain test; not both."
+        )
     # Get current test item from session-wide and locally scoped fixtures.
     t8n = item.funcargs["t8n"]
     fork = item.funcargs["fork"]
