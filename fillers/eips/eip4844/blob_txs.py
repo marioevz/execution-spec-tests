@@ -2,7 +2,8 @@
 Test EIP-4844: Shard Blob Transactions (Excess Data Tests)
 EIP: https://eips.ethereum.org/EIPS/eip-4844
 """
-from typing import Dict, List, Optional
+import itertools
+from typing import Dict, List, Optional, Tuple
 
 import pytest
 
@@ -119,30 +120,33 @@ def tx_max_priority_fee_per_gas() -> int:  # noqa: D103
 
 
 @pytest.fixture
-def tx_exact_cost(  # noqa: D103
-    tx_gas: int,
-    tx_value: int,
-    fee_per_gas: int,
-    tx_max_priority_fee_per_gas: int,
+def blob_combinations(  # noqa: D103
+    tx_count: int,
     blobs_per_tx: int,
-    data_gasprice: Optional[int],
-) -> int:
-    if data_gasprice is None:
-        data_gasprice = 1
-    data_cost = data_gasprice * DATA_GAS_PER_BLOB * blobs_per_tx
-    return (
-        (tx_gas * (fee_per_gas + tx_max_priority_fee_per_gas))
-        + tx_value
-        + data_cost
-    )
+) -> Optional[List[int]]:
+    return [blobs_per_tx] * tx_count
 
 
 @pytest.fixture
 def total_account_minimum_balance(  # noqa: D103
-    tx_count: int,
-    tx_exact_cost: int,
+    tx_gas: int,
+    tx_value: int,
+    fee_per_gas: int,
+    tx_max_priority_fee_per_gas: int,
+    data_gasprice: Optional[int],
+    blob_combinations: List[int],
 ) -> int:
-    return tx_count * tx_exact_cost
+    if data_gasprice is None:
+        data_gasprice = 1
+    total_cost = 0
+    for tx_blob_count in blob_combinations:
+        data_cost = data_gasprice * DATA_GAS_PER_BLOB * tx_blob_count
+        total_cost += (
+            (tx_gas * (fee_per_gas + tx_max_priority_fee_per_gas))
+            + tx_value
+            + data_cost
+        )
+    return total_cost
 
 
 @pytest.fixture(autouse=True)
@@ -167,17 +171,21 @@ def max_fee_per_data_gas(  # noqa: D103
     )
 
 
+@pytest.fixture
+def tx_error() -> str:  # noqa: D103
+    return ""
+
+
 @pytest.fixture(autouse=True)
 def txs(  # noqa: D103
     destination_account: str,
-    tx_count: int,
     tx_gas: int,
     tx_value: int,
     fee_per_gas: int,
     max_fee_per_gas: Optional[int],
     max_fee_per_data_gas: int,
     tx_max_priority_fee_per_gas: int,
-    blobs_per_tx: int,
+    blob_combinations: List[int],
     tx_error: str,
 ) -> List[Transaction]:
     if max_fee_per_gas is None:
@@ -194,11 +202,11 @@ def txs(  # noqa: D103
             max_fee_per_data_gas=max_fee_per_data_gas,
             access_list=[],
             blob_versioned_hashes=[
-                to_hash_bytes(x) for x in range(blobs_per_tx)
+                to_hash_bytes(x) for x in range(blob_count)
             ],
-            error=tx_error if tx_i == (tx_count - 1) else None,
+            error=tx_error if tx_i == (len(blob_combinations) - 1) else None,
         )
-        for tx_i in range(tx_count)
+        for tx_i, blob_count in enumerate(blob_combinations)
     ]
 
 
@@ -237,6 +245,76 @@ def blocks(  # noqa: D103
             exception=tx_error,
         )
     ]
+
+
+def all_valid_blob_combinations() -> List[Tuple[int, ...]]:
+    """
+    Returns all valid blob tx combinations for a given block,
+    assuming the given MAX_BLOBS_PER_BLOCK
+    """
+    all = [
+        seq
+        for i in range(
+            MAX_BLOBS_PER_BLOCK, 0, -1
+        )  # We can have from 1 to at most MAX_BLOBS_PER_BLOCK blobs per block
+        for seq in itertools.combinations_with_replacement(
+            range(1, MAX_BLOBS_PER_BLOCK + 1), i
+        )  # We iterate through all possible combinations
+        if sum(seq)
+        <= MAX_BLOBS_PER_BLOCK  # And we only keep the ones that are valid
+    ]
+    # We also add the reversed version of each combination, only if it's not
+    # already in the list. E.g. (2, 1, 1) is added from (1, 1, 2) but not
+    # (1, 1, 1) because its reversed version is identical.
+    all += [tuple(reversed(x)) for x in all if tuple(reversed(x)) not in all]
+    return all
+
+
+def invalid_blob_combinations() -> List[Tuple[int, ...]]:
+    """
+    Returns invalid blob tx combinations for a given block that use up to
+    MAX_BLOBS_PER_BLOCK+1 blobs
+    """
+    all = [
+        seq
+        for i in range(
+            MAX_BLOBS_PER_BLOCK + 1, 0, -1
+        )  # We can have from 1 to at most MAX_BLOBS_PER_BLOCK blobs per block
+        for seq in itertools.combinations_with_replacement(
+            range(1, MAX_BLOBS_PER_BLOCK + 2), i
+        )  # We iterate through all possible combinations
+        if sum(seq)
+        == MAX_BLOBS_PER_BLOCK + 1  # And we only keep the ones that match the
+        # expected invalid blob count
+    ]
+    # We also add the reversed version of each combination, only if it's not
+    # already in the list. E.g. (4, 1) is added from (1, 4) but not
+    # (1, 1, 1, 1, 1) because its reversed version is identical.
+    all += [tuple(reversed(x)) for x in all if tuple(reversed(x)) not in all]
+    return all
+
+
+@pytest.mark.parametrize(
+    "blob_combinations",
+    all_valid_blob_combinations(),
+)
+@pytest.mark.parametrize("fork", forks_from(Cancun))
+def test_valid_blob_tx_combinations(
+    blockchain_test: BlockchainTestFiller,
+    pre: Dict,
+    env: Environment,
+    blocks: List[Block],
+    fork: Fork,
+):
+    """
+    Test all valid blob combinations in a single block.
+    """
+    blockchain_test(
+        pre=pre,
+        post={},
+        blocks=blocks,
+        genesis_environment=env,
+    )
 
 
 @pytest.mark.parametrize(
@@ -300,9 +378,7 @@ def test_invalid_normal_gas(
 ):
     """
     Reject blocks with invalid blob txs due to:
-        -
-        - tx max_fee_per_data_gas is not enough
-        - tx max_fee_per_data_gas is zero
+        - insufficient max fee per gas, but sufficient max fee per data gas
     """
     blockchain_test(
         pre=pre,
@@ -313,12 +389,8 @@ def test_invalid_normal_gas(
 
 
 @pytest.mark.parametrize(
-    "tx_count,blobs_per_tx",
-    [
-        (MAX_BLOBS_PER_BLOCK + 1, 1),
-        (1, MAX_BLOBS_PER_BLOCK + 1),
-    ],
-    ids=["too_many_blobs_in_block", "too_many_blobs_in_tx"],
+    "blob_combinations",
+    invalid_blob_combinations(),
 )
 @pytest.mark.parametrize("tx_error", ["invalid_blob_count"])
 @pytest.mark.parametrize("fork", forks_from(Cancun))
@@ -355,6 +427,32 @@ def test_insufficient_balance_blob_tx(
     """
     Reject blocks where user cannot afford the data gas specified (but
     max_fee_per_gas would be enough for current block)
+    """
+    blockchain_test(
+        pre=pre,
+        post={},
+        blocks=blocks,
+        genesis_environment=env,
+    )
+
+
+@pytest.mark.parametrize(
+    "blob_combinations",
+    all_valid_blob_combinations(),
+)
+@pytest.mark.parametrize("account_balance_modifier", [-1])
+@pytest.mark.parametrize("tx_error", ["insufficient account balance"])
+@pytest.mark.parametrize("fork", forks_from(Cancun))
+def test_insufficient_balance_blob_tx_combinations(
+    blockchain_test: BlockchainTestFiller,
+    pre: Dict,
+    env: Environment,
+    blocks: List[Block],
+    fork: Fork,
+):
+    """
+    Reject blocks with invalid blob txs due to:
+        - The amount of blobs is correct but the user cannot afford the transaction total cost
     """
     blockchain_test(
         pre=pre,
