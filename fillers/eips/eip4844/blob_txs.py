@@ -60,70 +60,107 @@ def get_data_gasprice(excess_data_gas: int) -> int:
 
 
 @pytest.fixture
-def destination_account() -> str:  # noqa: D103
+def destination_account() -> str:
+    """Default destination account for the blob transactions."""
     return to_address(0x100)
 
 
 @pytest.fixture(autouse=True)
-def tx_count() -> int:  # noqa: D103
+def tx_count() -> int:
+    """Default number of transactions sent during test."""
     return 1
 
 
 @pytest.fixture(autouse=True)
-def blobs_per_tx() -> int:  # noqa: D103
+def blobs_per_tx() -> int:
+    """
+    Default number of blobs per transaction sent during test.
+
+    Can be overloaded by a test case to provide a custom number of blobs per
+    transaction.
+    """
     return 1
 
 
 @pytest.fixture
-def tx_value() -> int:  # noqa: D103
+def tx_value() -> int:
+    """
+    Default value contained by the transactions sent during test.
+
+    Can be overloaded by a test case to provide a custom transaction value.
+    """
     return 1
 
 
 @pytest.fixture
-def tx_gas() -> int:  # noqa: D103
+def tx_gas() -> int:
+    """Default gas allocated to transactions sent during test."""
     return 21000
 
 
 @pytest.fixture
-def fee_per_gas() -> int:  # noqa: D103
+def block_fee_per_gas() -> int:
+    """Default max fee per gas for transactions sent during test."""
     return 7
 
 
 @pytest.fixture(autouse=True)
-def parent_excess_blobs() -> Optional[int]:  # noqa: D103
-    # Default to 10 blobs in the parent block, such that the data gas price is
-    # 1.
-    return 10
+def parent_excess_blobs() -> Optional[int]:
+    """
+    Default excess blobs of the parent block.
+
+    Can be overloaded by a test case to provide a custom parent excess blob
+    count.
+    """
+    return 10  # Defaults to a data gas price of 1.
 
 
 @pytest.fixture
-def parent_excess_data_gas(  # noqa: D103
+def parent_excess_data_gas(
     parent_excess_blobs: Optional[int],
 ) -> Optional[int]:
+    """
+    Calculates the excess data gas of the paraent block from the excess blobs.
+    """
     if parent_excess_blobs is None:
         return None
     return parent_excess_blobs * DATA_GAS_PER_BLOB
 
 
 @pytest.fixture
-def data_gasprice(  # noqa: D103
+def data_gasprice(
     parent_excess_data_gas: Optional[int],
 ) -> Optional[int]:
+    """
+    Data gas price for the block of the test.
+    """
     if parent_excess_data_gas is None:
         return None
     return get_data_gasprice(excess_data_gas=parent_excess_data_gas)
 
 
 @pytest.fixture
-def tx_max_priority_fee_per_gas() -> int:  # noqa: D103
+def tx_max_priority_fee_per_gas() -> int:
+    """
+    Default max priority fee per gas for transactions sent during test.
+
+    Can be overloaded by a test case to provide a custom max priority fee per
+    gas.
+    """
     return 0
 
 
 @pytest.fixture
-def blob_combinations(  # noqa: D103
+def blob_combinations(
     tx_count: int,
     blobs_per_tx: int,
 ) -> Optional[List[int]]:
+    """
+    Returns a list of integers that each represent the number of blobs in each
+    transaction in the block of the test.
+
+    Can be overloaded by a test case to provide a custom list of blob counts.
+    """
     return [blobs_per_tx] * tx_count
 
 
@@ -131,18 +168,23 @@ def blob_combinations(  # noqa: D103
 def total_account_minimum_balance(  # noqa: D103
     tx_gas: int,
     tx_value: int,
-    fee_per_gas: int,
+    block_fee_per_gas: int,
     tx_max_priority_fee_per_gas: int,
     data_gasprice: Optional[int],
     blob_combinations: List[int],
 ) -> int:
+    """
+    Calculates the minimum balance required for the account to be able to send
+    the transactions in the block of the test.
+    """
     if data_gasprice is None:
+        # When fork transitioning, the default data gas price is 1.
         data_gasprice = 1
     total_cost = 0
     for tx_blob_count in blob_combinations:
         data_cost = data_gasprice * DATA_GAS_PER_BLOB * tx_blob_count
         total_cost += (
-            (tx_gas * (fee_per_gas + tx_max_priority_fee_per_gas))
+            (tx_gas * (block_fee_per_gas + tx_max_priority_fee_per_gas))
             + tx_value
             + data_cost
         )
@@ -150,29 +192,43 @@ def total_account_minimum_balance(  # noqa: D103
 
 
 @pytest.fixture(autouse=True)
-def max_fee_per_gas() -> Optional[int]:  # noqa: D103
-    return None
-
-
-@pytest.fixture(autouse=True)
-def tx_max_data_gas_cost() -> Optional[int]:  # noqa: D103
-    return None
-
-
-@pytest.fixture
-def max_fee_per_data_gas(  # noqa: D103
-    data_gasprice: int,
-    tx_max_data_gas_cost: Optional[int],
+def tx_max_fee_per_gas(
+    block_fee_per_gas: int,
 ) -> int:
-    return (
-        tx_max_data_gas_cost
-        if tx_max_data_gas_cost is not None
-        else data_gasprice
-    )
+    """
+    Max fee per gas value used by all transactions sent during test.
+
+    By default the max fee per gas is the same as the block fee per gas.
+
+    Can be overloaded by a test case to test rejection of transactions where
+    the max fee per gas is insufficient.
+    """
+    return block_fee_per_gas
 
 
 @pytest.fixture
-def tx_error() -> str:  # noqa: D103
+def tx_max_fee_per_data_gas(  # noqa: D103
+    data_gasprice: int,
+) -> int:
+    """
+    Default max fee per data gas for transactions sent during test.
+
+    By default, it is set to the data gas price of the block.
+
+    Can be overloaded by a test case to test rejection of transactions where
+    the max fee per data gas is insufficient.
+    """
+    return data_gasprice
+
+
+@pytest.fixture
+def tx_error() -> str:
+    """
+    Default expected error produced by the block transactions (no error).
+
+    Can be overloaded on test cases where the transactions are expected
+    to fail.
+    """
     return ""
 
 
@@ -181,15 +237,15 @@ def txs(  # noqa: D103
     destination_account: str,
     tx_gas: int,
     tx_value: int,
-    fee_per_gas: int,
-    max_fee_per_gas: Optional[int],
-    max_fee_per_data_gas: int,
+    tx_max_fee_per_gas: int,
+    tx_max_fee_per_data_gas: int,
     tx_max_priority_fee_per_gas: int,
     blob_combinations: List[int],
     tx_error: str,
 ) -> List[Transaction]:
-    if max_fee_per_gas is None:
-        max_fee_per_gas = fee_per_gas
+    """
+    Prepare the list of transactions that are sent during the test.
+    """
     return [
         Transaction(
             ty=3,
@@ -197,9 +253,9 @@ def txs(  # noqa: D103
             to=destination_account,
             value=tx_value,
             gas_limit=tx_gas,
-            max_fee_per_gas=max_fee_per_gas,
+            max_fee_per_gas=tx_max_fee_per_gas,
             max_priority_fee_per_gas=tx_max_priority_fee_per_gas,
-            max_fee_per_data_gas=max_fee_per_data_gas,
+            max_fee_per_data_gas=tx_max_fee_per_data_gas,
             access_list=[],
             blob_versioned_hashes=[
                 to_hash_bytes(x) for x in range(blob_count)
@@ -211,7 +267,11 @@ def txs(  # noqa: D103
 
 
 @pytest.fixture
-def account_balance_modifier() -> int:  # noqa: D103
+def account_balance_modifier() -> int:
+    """
+    Default modifier for the balance of the source account of all test.
+    See `pre` fixture.
+    """
     return 0
 
 
@@ -220,6 +280,14 @@ def pre(  # noqa: D103
     total_account_minimum_balance: int,
     account_balance_modifier: int,
 ) -> Dict:
+    """
+    Prepares the pre state of all test cases, by setting the balance of the
+    source account of all test transactions.
+
+    The `account_balance_modifier` can be overloaded by a test case and alter
+    the balance of the account from the minimum expected, to produce invalid
+    blocks.
+    """
     return {
         TestAddress: Account(
             balance=total_account_minimum_balance + account_balance_modifier
@@ -228,9 +296,12 @@ def pre(  # noqa: D103
 
 
 @pytest.fixture
-def env(  # noqa: D103
+def env(
     parent_excess_data_gas: Optional[int],
 ) -> Environment:
+    """
+    Prepare the environment for all test cases.
+    """
     return Environment(excess_data_gas=parent_excess_data_gas)
 
 
@@ -239,6 +310,9 @@ def blocks(  # noqa: D103
     txs: List[Transaction],
     tx_error: str,
 ) -> List[Block]:
+    """
+    Prepare the list of blocks for all test cases.
+    """
     return [
         Block(
             txs=txs,
@@ -318,7 +392,7 @@ def test_valid_blob_tx_combinations(
 
 
 @pytest.mark.parametrize(
-    "parent_excess_blobs,tx_max_data_gas_cost,tx_error",
+    "parent_excess_blobs,tx_max_fee_per_data_gas,tx_error",
     [
         # tx max_data_gas_cost of the transaction is not enough
         (
@@ -358,7 +432,7 @@ def test_invalid_tx_max_fee_per_data_gas(
 
 
 @pytest.mark.parametrize(
-    "max_fee_per_gas,tx_error",
+    "tx_max_fee_per_gas,tx_error",
     [
         # max data gas is ok, but max fee per gas is less than base fee per gas
         (
@@ -452,7 +526,8 @@ def test_insufficient_balance_blob_tx_combinations(
 ):
     """
     Reject blocks with invalid blob txs due to:
-        - The amount of blobs is correct but the user cannot afford the transaction total cost
+        - The amount of blobs is correct but the user cannot afford the
+            transaction total cost
     """
     blockchain_test(
         pre=pre,
@@ -491,7 +566,7 @@ def test_invalid_tx_blob_count(
 
 @pytest.mark.parametrize("blobs_per_tx", [0, 1], ids=["no_blobs", "one_blob"])
 @pytest.mark.parametrize("parent_excess_blobs", [None])
-@pytest.mark.parametrize("tx_max_data_gas_cost", [1])
+@pytest.mark.parametrize("tx_max_fee_per_data_gas", [1])
 @pytest.mark.parametrize("tx_error", ["tx_type_3_not_allowed_yet"])
 @pytest.mark.parametrize("fork", fork_only(Shanghai))
 def test_blob_txs_pre_fork(
