@@ -40,8 +40,8 @@ INF_POINT = (0xC0 << 376).to_bytes(48, byteorder="big")
 
 class Auto(object):
     """
-    Class to use as a default value for parameters that should be automatically
-    calculated.
+    Class to used as sentinel value to signal tha a parameter should be
+    automatically calculated.
     """
 
     def __repr__(self) -> str:
@@ -75,14 +75,9 @@ def precompile_input(proof: Literal["correct", "incorrect"]) -> bytes:
     """
     kzg_commitment = INF_POINT
     kzg_proof = INF_POINT
-
     z = Z
-
     # INF_POINT commitment and proof evaluate to 0 on all z values
-    if proof == "correct":
-        y = 0
-    else:
-        y = 1
+    y = 0 if proof == "correct" else 1
 
     versioned_hash = kzg_to_versioned_hash(kzg_commitment)
     return (
