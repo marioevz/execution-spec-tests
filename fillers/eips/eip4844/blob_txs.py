@@ -15,13 +15,31 @@ from ethereum_test_tools import (
     Environment,
     TestAddress,
     Transaction,
+    add_kzg_version,
     to_address,
     to_hash_bytes,
 )
 
+# * Adding a new test *
+# Add a function that is named `test_<test_name>` and takes the following
+# arguments:
+#   - blockchain_test
+#   - pre
+#   - env
+#   - blocks
+#   - fork
+#
+# The following arguments *need* to be parametrized or the test will not be
+# generated:
+# - fork
+#
+# All other `pytest.fixture` fixtures can be parametrized to generate new
+# combinations and test cases.
+
 REFERENCE_SPEC_GIT_PATH = "EIPS/eip-4844.md"
 REFERENCE_SPEC_VERSION = "b33e063530f0a114635dd4f89d3cca90f8cac28f"
 
+BLOB_COMMITMENT_VERSION_KZG = 1
 DATAHASH_GAS_COST = 3
 MIN_DATA_GASPRICE = 1
 DATA_GAS_PER_BLOB = 2**17
@@ -159,9 +177,27 @@ def blob_combinations(
     Returns a list of integers that each represent the number of blobs in each
     transaction in the block of the test.
 
+    Used to automatically generate a list of correctly versioned blob hashes.
+
     Can be overloaded by a test case to provide a custom list of blob counts.
     """
     return [blobs_per_tx] * tx_count
+
+
+@pytest.fixture
+def blob_hashes_per_tx(blob_combinations: List[int]) -> List[List[bytes]]:
+    """
+    Produce the list of blob hashes that are sent during the test.
+
+    Can be overloaded by a test case to provide a custom list of blob hashes.
+    """
+    return [
+        add_kzg_version(
+            [to_hash_bytes(x) for x in range(blob_count)],
+            BLOB_COMMITMENT_VERSION_KZG,
+        )
+        for blob_count in blob_combinations
+    ]
 
 
 @pytest.fixture
@@ -171,7 +207,7 @@ def total_account_minimum_balance(  # noqa: D103
     block_fee_per_gas: int,
     tx_max_priority_fee_per_gas: int,
     data_gasprice: Optional[int],
-    blob_combinations: List[int],
+    blob_hashes_per_tx: List[List[bytes]],
 ) -> int:
     """
     Calculates the minimum balance required for the account to be able to send
@@ -181,7 +217,7 @@ def total_account_minimum_balance(  # noqa: D103
         # When fork transitioning, the default data gas price is 1.
         data_gasprice = 1
     total_cost = 0
-    for tx_blob_count in blob_combinations:
+    for tx_blob_count in [len(x) for x in blob_hashes_per_tx]:
         data_cost = data_gasprice * DATA_GAS_PER_BLOB * tx_blob_count
         total_cost += (
             (tx_gas * (block_fee_per_gas + tx_max_priority_fee_per_gas))
@@ -240,7 +276,7 @@ def txs(  # noqa: D103
     tx_max_fee_per_gas: int,
     tx_max_fee_per_data_gas: int,
     tx_max_priority_fee_per_gas: int,
-    blob_combinations: List[int],
+    blob_hashes_per_tx: List[List[bytes]],
     tx_error: str,
 ) -> List[Transaction]:
     """
@@ -257,12 +293,10 @@ def txs(  # noqa: D103
             max_priority_fee_per_gas=tx_max_priority_fee_per_gas,
             max_fee_per_data_gas=tx_max_fee_per_data_gas,
             access_list=[],
-            blob_versioned_hashes=[
-                to_hash_bytes(x) for x in range(blob_count)
-            ],
-            error=tx_error if tx_i == (len(blob_combinations) - 1) else None,
+            blob_versioned_hashes=blob_hashes,
+            error=tx_error if tx_i == (len(blob_hashes_per_tx) - 1) else None,
         )
-        for tx_i, blob_count in enumerate(blob_combinations)
+        for tx_i, blob_hashes in enumerate(blob_hashes_per_tx)
     ]
 
 
@@ -555,6 +589,70 @@ def test_invalid_tx_blob_count(
     - blob count = 0 in type 3 transaction
     - blob count > MAX_BLOBS_PER_TX in type 3 transaction
     - blob count > MAX_BLOBS_PER_BLOCK in type 3 transaction
+    """
+    blockchain_test(
+        pre=pre,
+        post={},
+        blocks=blocks,
+        genesis_environment=env,
+    )
+
+
+@pytest.mark.parametrize(
+    "blob_hashes_per_tx",
+    [
+        [[to_hash_bytes(1)]],
+        [[to_hash_bytes(x) for x in range(2)]],
+        [
+            add_kzg_version([to_hash_bytes(1)], BLOB_COMMITMENT_VERSION_KZG)
+            + [to_hash_bytes(2)]
+        ],
+        [
+            [to_hash_bytes(1)]
+            + add_kzg_version([to_hash_bytes(2)], BLOB_COMMITMENT_VERSION_KZG)
+        ],
+        [
+            add_kzg_version([to_hash_bytes(1)], BLOB_COMMITMENT_VERSION_KZG),
+            [to_hash_bytes(2)],
+        ],
+        [
+            add_kzg_version([to_hash_bytes(1)], BLOB_COMMITMENT_VERSION_KZG),
+            [to_hash_bytes(x) for x in range(1, 3)],
+        ],
+        [
+            add_kzg_version([to_hash_bytes(1)], BLOB_COMMITMENT_VERSION_KZG),
+            [to_hash_bytes(2)]
+            + add_kzg_version([to_hash_bytes(3)], BLOB_COMMITMENT_VERSION_KZG),
+        ],
+        [
+            add_kzg_version([to_hash_bytes(1)], BLOB_COMMITMENT_VERSION_KZG),
+            add_kzg_version([to_hash_bytes(2)], BLOB_COMMITMENT_VERSION_KZG),
+            [to_hash_bytes(3)],
+        ],
+    ],
+    ids=[
+        "single_tx_single_blob",
+        "single_tx_multiple_blobs",
+        "single_tx_multiple_blobs_single_bad_hash_1",
+        "single_tx_multiple_blobs_single_bad_hash_2",
+        "multiple_txs_single_blob",
+        "multiple_txs_multiple_blobs",
+        "multiple_txs_multiple_blobs_single_bad_hash_1",
+        "multiple_txs_multiple_blobs_single_bad_hash_2",
+    ],
+)
+@pytest.mark.parametrize("tx_error", ["invalid_blob_hash_versioning"])
+@pytest.mark.parametrize("fork", forks_from(Cancun))
+def test_invalid_blob_hash_versioning(
+    blockchain_test: BlockchainTestFiller,
+    pre: Dict,
+    env: Environment,
+    blocks: List[Block],
+    fork: Fork,
+):
+    """
+    Reject blocks that include blob transactions with invalid blob hash
+    version.
     """
     blockchain_test(
         pre=pre,
