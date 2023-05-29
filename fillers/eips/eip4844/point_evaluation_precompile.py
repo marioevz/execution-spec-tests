@@ -19,6 +19,7 @@ from ethereum_test_forks import (
 )
 from ethereum_test_tools import (
     Account,
+    Auto,
     Block,
     BlockchainTestFiller,
     Storage,
@@ -50,17 +51,6 @@ Z_Y_INVALID_ENDIANNESS: Literal["little", "big"] = "big"
 
 Z = 0x623CE31CF9759A5C8DAF3A357992F9F3DD7F9339D8998BC8E68373E54F00B75E
 INF_POINT = (0xC0 << 376).to_bytes(48, byteorder="big")
-
-
-class Auto(object):
-    """
-    Class to use as a default value for parameters that should be automatically
-    calculated.
-    """
-
-    def __repr__(self) -> str:
-        """Print the correct test id."""
-        return "auto"
 
 
 auto = Auto()
