@@ -87,9 +87,9 @@ def precompile_input(
     Format the input for the point evaluation precompile.
     """
     if isinstance(z, int):
-        z = z.to_bytes(32, "little")
+        z = z.to_bytes(32, Z_Y_VALID_ENDIANNESS)
     if isinstance(y, int):
-        y = y.to_bytes(32, "little")
+        y = y.to_bytes(32, Z_Y_VALID_ENDIANNESS)
     if isinstance(kzg_commitment, int):
         kzg_commitment = kzg_commitment.to_bytes(48, "big")
     if isinstance(kzg_proof, int):
