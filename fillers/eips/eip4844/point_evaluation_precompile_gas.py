@@ -27,29 +27,8 @@ POINT_EVALUATION_PRECOMPILE_ADDRESS = 20
 POINT_EVALUATION_PRECOMPILE_GAS = 50_000
 BLOB_COMMITMENT_VERSION_KZG = b"\x01"
 
-BLS_MODULUS = (
-    0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
-)
-BLS_MODULUS_BYTES = BLS_MODULUS.to_bytes(32, "big")
-FIELD_ELEMENTS_PER_BLOB = 4096
-FIELD_ELEMENTS_PER_BLOB_BYTES = FIELD_ELEMENTS_PER_BLOB.to_bytes(32, "big")
-
 Z = 0x623CE31CF9759A5C8DAF3A357992F9F3DD7F9339D8998BC8E68373E54F00B75E
 INF_POINT = (0xC0 << 376).to_bytes(48, byteorder="big")
-
-
-class Auto(object):
-    """
-    Class to used as sentinel value to signal tha a parameter should be
-    automatically calculated.
-    """
-
-    def __repr__(self) -> str:
-        """Print the correct test id."""
-        return "auto"
-
-
-auto = Auto()
 
 
 def kzg_to_versioned_hash(
