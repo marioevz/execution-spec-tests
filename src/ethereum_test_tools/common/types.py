@@ -23,7 +23,7 @@ from evm_transition_tool import TransitionTool
 
 from ..code import Code, code_to_hex
 from ..reference_spec.reference_spec import ReferenceSpec
-from .constants import AddrAA, TestPrivateKey
+from .constants import AddrAA, TestAddress, TestPrivateKey
 
 
 def code_or_none(input: str | bytes | Code, default=None) -> str | None:
@@ -1170,6 +1170,8 @@ class JSONEncoder(json.JSONEncoder):
                 tx["v"] = ""
                 tx["r"] = ""
                 tx["s"] = ""
+                # TODO: FIX!
+                tx["sender"] = TestAddress
             return {k: v for (k, v) in tx.items() if v is not None}
         elif isinstance(obj, Withdrawal):
             withdrawal = {

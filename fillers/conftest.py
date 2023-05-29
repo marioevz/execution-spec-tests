@@ -24,7 +24,7 @@ from ethereum_test_tools import (
     fill_test,
 )
 from evm_block_builder import EvmBlockBuilder
-from evm_transition_tool import EvmTransitionTool
+from evm_transition_tool import EvmOneTransitionTool as EvmTransitionTool
 
 
 def pytest_addoption(parser):

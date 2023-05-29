@@ -272,3 +272,163 @@ class EvmTransitionTool(TransitionTool):
         Returns True if the fork is supported by the tool
         """
         return True
+
+
+class EvmOneTransitionTool(TransitionTool):
+    """
+    Go-ethereum `evm` Transition tool frontend.
+    """
+
+    binary: Path
+    cached_version: Optional[str] = None
+    trace: bool
+
+    def __init__(
+        self,
+        binary: Optional[Path] = None,
+        trace: bool = False,
+    ):
+        if binary is None:
+            which_path = which("evmone-t8n")
+            if which_path is not None:
+                binary = Path(which_path)
+        if binary is None or not binary.exists():
+            raise Exception(
+                """`evmone-t8n` binary executable is not accessible, please
+                refer to https://github.com/ethereum/evmone on how to compile
+                and install the full suite of utilities including the
+                `evmone-t8n` tool"""
+            )
+        self.binary = binary
+        self.trace = trace
+
+    def evaluate(
+        self,
+        alloc: Any,
+        txs: Any,
+        env: Any,
+        fork: Fork,
+        chain_id: int = 1,
+        reward: int = 0,
+        eips: Optional[List[int]] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
+        """
+        Executes `evm t8n` with the specified arguments.
+        """
+        fork_name = fork.name()
+        if eips is not None:
+            fork_name = "+".join([fork_name] + [str(eip) for eip in eips])
+
+        temp_dir = tempfile.TemporaryDirectory()
+        input_alloc_path = os.path.join(temp_dir.name, "input_alloc.json")
+        input_txs_path = os.path.join(temp_dir.name, "input_txs.json")
+        input_env_path = os.path.join(temp_dir.name, "input_env.json")
+        result_path = os.path.join(temp_dir.name, "result.json")
+        out_alloc_path = os.path.join(temp_dir.name, "out_alloc.json")
+        txs_rlp_path = os.path.join(temp_dir.name, "txs.rlp")
+        args = [
+            str(self.binary),
+            "t8n",
+            "--input.alloc",
+            input_alloc_path,
+            "--input.txs",
+            input_txs_path,
+            "--input.env",
+            input_env_path,
+            "--output.result",
+            result_path,
+            "--output.alloc",
+            out_alloc_path,
+            "--output.body",
+            txs_rlp_path,
+            "--output.basedir",
+            temp_dir.name,
+            "--state.fork",
+            fork_name,
+            "--state.chainid",
+            str(chain_id),
+            "--state.reward",
+            str(reward),
+        ]
+
+        args.append("--trace")
+
+        with open(input_alloc_path, "w") as input_alloc_file:
+            json.dump(alloc, input_alloc_file)
+        with open(input_txs_path, "w") as input_txs_file:
+            json.dump(txs, input_txs_file)
+        with open(input_env_path, "w") as input_env_file:
+            json.dump(env, input_env_file)
+
+        run_result = subprocess.run(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        if run_result.returncode != 0:
+            raise Exception(
+                "failed to evaluate: " + run_result.stderr.decode()
+            )
+
+        result = None
+        with open(
+            os.path.join(temp_dir.name, result_path), "r"
+        ) as result_file:
+            result = json.load(result_file)
+        out_alloc = None
+        with open(
+            os.path.join(temp_dir.name, out_alloc_path), "r"
+        ) as out_alloc_file:
+            out_alloc = json.load(out_alloc_file)
+        if result is None or out_alloc is None:
+            raise Exception("malformed result")
+
+        with open(
+            os.path.join(temp_dir.name, txs_rlp_path), "r"
+        ) as txs_rlp_file:
+            txs_rlp = txs_rlp_file.read().strip('"')
+
+        if self.trace:
+            receipts: List[Any] = result["receipts"]
+            traces: List[List[Dict]] = []
+            for i, r in enumerate(receipts):
+                h = r["transactionHash"]
+                trace_file_name = f"trace-{i}-{h}.jsonl"
+                with open(
+                    os.path.join(temp_dir.name, trace_file_name), "r"
+                ) as trace_file:
+                    tx_traces: List[Dict] = []
+                    for trace_line in trace_file.readlines():
+                        tx_traces.append(json.loads(trace_line))
+                    traces.append(tx_traces)
+            self.append_traces(traces)
+
+        temp_dir.cleanup()
+
+        return (out_alloc, result, txs_rlp)
+
+    def version(self) -> str:
+        """
+        Gets `evm` binary version.
+        """
+        if self.cached_version is None:
+            result = subprocess.run(
+                [str(self.binary), "-v"],
+                stdout=subprocess.PIPE,
+            )
+
+            if result.returncode != 0:
+                raise Exception(
+                    "failed to evaluate: " + result.stderr.decode()
+                )
+
+            self.cached_version = result.stdout.decode().strip()
+
+        return self.cached_version
+
+    def is_fork_supported(self, _: Fork) -> bool:
+        """
+        Returns True if the fork is supported by the tool
+        """
+        return True
