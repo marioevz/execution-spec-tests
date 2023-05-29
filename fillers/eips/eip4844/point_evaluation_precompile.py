@@ -24,6 +24,7 @@ from ethereum_test_tools import (
     Storage,
     TestAddress,
     Transaction,
+    eip_2028_transaction_data_cost,
     to_address,
 )
 from ethereum_test_tools.vm.opcode import Opcodes as Op
@@ -42,6 +43,8 @@ BLS_MODULUS_BYTES = BLS_MODULUS.to_bytes(32, "big")
 FIELD_ELEMENTS_PER_BLOB = 4096
 FIELD_ELEMENTS_PER_BLOB_BYTES = FIELD_ELEMENTS_PER_BLOB.to_bytes(32, "big")
 
+
+# TODO: Update once https://github.com/ethereum/EIPs/pull/7020 is merged.
 Z_Y_VALID_ENDIANNESS: Literal["little", "big"] = "little"
 Z_Y_INVALID_ENDIANNESS: Literal["little", "big"] = "big"
 
@@ -504,6 +507,84 @@ def test_point_evaluation_precompile_calls(
     Test calling the Point Evaluation Precompile with different call types, gas
     and parameter configuration.
     """
+    blockchain_test(
+        pre=pre,
+        post=post,
+        blocks=[Block(txs=[tx])],
+    )
+
+
+@pytest.mark.parametrize(
+    "call_gas",
+    [
+        (POINT_EVALUATION_PRECOMPILE_GAS),
+        (POINT_EVALUATION_PRECOMPILE_GAS + 1),
+        (POINT_EVALUATION_PRECOMPILE_GAS - 1),
+    ],
+    ids=["exact_gas", "extra_gas", "insufficient_gas"],
+)
+@pytest.mark.parametrize(
+    "z,y,kzg_commitment,kzg_proof,versioned_hash,proof_correct",
+    [
+        [Z, 0, INF_POINT, INF_POINT, auto, True],
+        [Z, 1, INF_POINT, INF_POINT, auto, False],
+    ],
+    ids=["correct_proof", "incorrect_proof"],
+)
+@pytest.mark.parametrize("fork", forks_from(Cancun))
+def test_point_evaluation_precompile_gas_tx_to(
+    blockchain_test: BlockchainTestFiller,
+    precompile_input: bytes,
+    call_gas: int,
+    proof_correct: bool,
+    fork: Fork,
+):
+    """
+    Test calling the Point Evaluation Precompile directly as
+    transaction entry point, and measure the gas consumption.
+    """
+    start_balance = 10**18
+    pre = {
+        TestAddress: Account(
+            nonce=0,
+            balance=start_balance,
+        )
+    }
+
+    # Gas is appended the intrinsic gas cost of the transaction
+    intrinsic_gas_cost = 21_000 + eip_2028_transaction_data_cost(
+        precompile_input
+    )
+
+    # Consumed gas will only be the precompile gas if the proof is correct and
+    # the call gas is sufficient.
+    # Otherwise, the call gas will be consumed in full.
+    consumed_gas = (
+        POINT_EVALUATION_PRECOMPILE_GAS
+        if call_gas >= POINT_EVALUATION_PRECOMPILE_GAS and proof_correct
+        else call_gas
+    ) + intrinsic_gas_cost
+
+    fee_per_gas = 7
+
+    tx = Transaction(
+        ty=2,
+        nonce=0,
+        data=precompile_input,
+        to=to_address(POINT_EVALUATION_PRECOMPILE_ADDRESS),
+        value=0,
+        gas_limit=call_gas + intrinsic_gas_cost,
+        max_fee_per_gas=7,
+        max_priority_fee_per_gas=0,
+    )
+
+    post = {
+        TestAddress: Account(
+            nonce=1,
+            balance=start_balance - (consumed_gas * fee_per_gas),
+        )
+    }
+
     blockchain_test(
         pre=pre,
         post=post,
