@@ -83,23 +83,6 @@ def destination_account() -> str:
     return to_address(0x100)
 
 
-@pytest.fixture(autouse=True)
-def tx_count() -> int:
-    """Default number of transactions sent during test."""
-    return 1
-
-
-@pytest.fixture(autouse=True)
-def blobs_per_tx() -> int:
-    """
-    Default number of blobs per transaction sent during test.
-
-    Can be overloaded by a test case to provide a custom number of blobs per
-    transaction.
-    """
-    return 1
-
-
 @pytest.fixture
 def tx_value() -> int:
     """
@@ -169,23 +152,22 @@ def tx_max_priority_fee_per_gas() -> int:
 
 
 @pytest.fixture
-def blob_combinations(
-    tx_count: int,
-    blobs_per_tx: int,
-) -> Optional[List[int]]:
+def blobs_per_tx() -> List[int]:
     """
     Returns a list of integers that each represent the number of blobs in each
     transaction in the block of the test.
 
     Used to automatically generate a list of correctly versioned blob hashes.
 
+    Default is to have one transaction with one blob.
+
     Can be overloaded by a test case to provide a custom list of blob counts.
     """
-    return [blobs_per_tx] * tx_count
+    return [1]
 
 
 @pytest.fixture
-def blob_hashes_per_tx(blob_combinations: List[int]) -> List[List[bytes]]:
+def blob_hashes_per_tx(blobs_per_tx: List[int]) -> List[List[bytes]]:
     """
     Produce the list of blob hashes that are sent during the test.
 
@@ -196,7 +178,7 @@ def blob_hashes_per_tx(blob_combinations: List[int]) -> List[List[bytes]]:
             [to_hash_bytes(x) for x in range(blob_count)],
             BLOB_COMMITMENT_VERSION_KZG,
         )
-        for blob_count in blob_combinations
+        for blob_count in blobs_per_tx
     ]
 
 
@@ -403,7 +385,7 @@ def invalid_blob_combinations() -> List[Tuple[int, ...]]:
 
 
 @pytest.mark.parametrize(
-    "blob_combinations",
+    "blobs_per_tx",
     all_valid_blob_combinations(),
 )
 @pytest.mark.parametrize("fork", forks_from(Cancun))
@@ -497,7 +479,7 @@ def test_invalid_normal_gas(
 
 
 @pytest.mark.parametrize(
-    "blob_combinations",
+    "blobs_per_tx",
     invalid_blob_combinations(),
 )
 @pytest.mark.parametrize("tx_error", ["invalid_blob_count"])
@@ -522,8 +504,12 @@ def test_invalid_block_blob_count(
 
 @pytest.mark.parametrize("tx_max_priority_fee_per_gas", [0, 8])
 @pytest.mark.parametrize("tx_value", [0, 1])
-@pytest.mark.parametrize("account_balance_modifier", [-1])
-@pytest.mark.parametrize("tx_error", ["insufficient account balance"])
+@pytest.mark.parametrize(
+    "account_balance_modifier", [-1], ids=["exact_balance_minus_1"]
+)
+@pytest.mark.parametrize(
+    "tx_error", ["insufficient_account_balance"], ids=[""]
+)
 @pytest.mark.parametrize("fork", forks_from(Cancun))
 def test_insufficient_balance_blob_tx(
     blockchain_test: BlockchainTestFiller,
@@ -545,11 +531,15 @@ def test_insufficient_balance_blob_tx(
 
 
 @pytest.mark.parametrize(
-    "blob_combinations",
+    "blobs_per_tx",
     all_valid_blob_combinations(),
 )
-@pytest.mark.parametrize("account_balance_modifier", [-1])
-@pytest.mark.parametrize("tx_error", ["insufficient account balance"])
+@pytest.mark.parametrize(
+    "account_balance_modifier", [-1], ids=["exact_balance_minus_1"]
+)
+@pytest.mark.parametrize(
+    "tx_error", ["insufficient_account_balance"], ids=[""]
+)
 @pytest.mark.parametrize("fork", forks_from(Cancun))
 def test_insufficient_balance_blob_tx_combinations(
     blockchain_test: BlockchainTestFiller,
@@ -573,7 +563,10 @@ def test_insufficient_balance_blob_tx_combinations(
 
 @pytest.mark.parametrize(
     "blobs_per_tx,tx_error",
-    [(0, "zero_blob_tx"), (MAX_BLOBS_PER_BLOCK + 1, "too_many_blobs_tx")],
+    [
+        ([0], "zero_blob_tx"),
+        ([MAX_BLOBS_PER_BLOCK + 1], "too_many_blobs_tx"),
+    ],
     ids=["too_few_blobs", "too_many_blobs"],
 )
 @pytest.mark.parametrize("fork", forks_from(Cancun))
@@ -641,7 +634,9 @@ def test_invalid_tx_blob_count(
         "multiple_txs_multiple_blobs_single_bad_hash_2",
     ],
 )
-@pytest.mark.parametrize("tx_error", ["invalid_blob_hash_versioning"])
+@pytest.mark.parametrize(
+    "tx_error", ["invalid_versioned_hash"], ids=[""]
+)
 @pytest.mark.parametrize("fork", forks_from(Cancun))
 def test_invalid_blob_hash_versioning(
     blockchain_test: BlockchainTestFiller,
@@ -662,12 +657,21 @@ def test_invalid_blob_hash_versioning(
     )
 
 
-@pytest.mark.parametrize("blobs_per_tx", [0, 1], ids=["no_blobs", "one_blob"])
-@pytest.mark.parametrize("parent_excess_blobs", [None])
-@pytest.mark.parametrize("tx_max_fee_per_data_gas", [1])
-@pytest.mark.parametrize("tx_error", ["tx_type_3_not_allowed_yet"])
+@pytest.mark.parametrize(
+    [
+        "blobs_per_tx",
+        "parent_excess_blobs",
+        "tx_max_fee_per_data_gas",
+        "tx_error",
+    ],
+    [
+        ([0], None, 1, "tx_type_3_not_allowed_yet"),
+        ([1], None, 1, "tx_type_3_not_allowed_yet"),
+    ],
+    ids=["no_blob_tx", "one_blob_tx"],
+)
 @pytest.mark.parametrize("fork", fork_only(Shanghai))
-def test_blob_txs_pre_fork(
+def test_blob_type_tx_pre_fork(
     blockchain_test: BlockchainTestFiller,
     pre: Dict,
     env: Environment,
