@@ -634,9 +634,7 @@ def test_invalid_tx_blob_count(
         "multiple_txs_multiple_blobs_single_bad_hash_2",
     ],
 )
-@pytest.mark.parametrize(
-    "tx_error", ["invalid_versioned_hash"], ids=[""]
-)
+@pytest.mark.parametrize("tx_error", ["invalid_versioned_hash"], ids=[""])
 @pytest.mark.parametrize("fork", forks_from(Cancun))
 def test_invalid_blob_hash_versioning(
     blockchain_test: BlockchainTestFiller,
