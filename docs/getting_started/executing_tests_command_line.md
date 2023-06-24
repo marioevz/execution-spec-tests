@@ -23,7 +23,7 @@ fill --output="fixtures"
 ```
 
 !!! note "Test case verification"
-    Note, that the test `post` conditions are tested against the output of the `evm t8n` command for transition tests, respectively `evm b11r` command for blockchain tests, during test generation.
+    Note, that the test `post` conditions are tested against the output of the `evm t8n` command for all tests, during test generation.
 
 To generate all the test fixtures in the `./tests/eips/` sub-directory (category), for example, run:
 ```console
