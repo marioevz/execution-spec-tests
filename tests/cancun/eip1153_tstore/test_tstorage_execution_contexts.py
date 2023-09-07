@@ -71,25 +71,24 @@ class DynamicCallContextTestCases(EnumMeta):
                 "expected_caller_storage": {0: 0, 1: 420, 2: 420},
                 "expected_callee_storage": {},
             }
-            classdict[f"{opcode._name_}_WITH_INVALID"] = (
-                {
-                    "description": (
-                        "Caller and callee contracts share transient storage when callee is "
-                        f"called via {opcode._name_} but transient storage usage is discarded "
-                        "from sub-call upon INVALID. Note: Gas passed to sub-call is capped."
-                    ),
-                    "caller_bytecode": (
-                        Op.TSTORE(0, 420)
-                        + Op.TSTORE(1, 420)
-                        + Op.SSTORE(0, opcode(0xFF, callee_address, 0, 0, 0, 0, 0))
-                        + Op.SSTORE(1, Op.TLOAD(0))
-                        + Op.SSTORE(2, Op.TLOAD(1))
-                    ),
-                    "callee_bytecode": Op.TSTORE(1, 69) + Op.INVALID(),
-                    "expected_caller_storage": {0: 0, 1: 420, 2: 420},
-                    "expected_callee_storage": {},
-                },
-            )
+            classdict[f"{opcode._name_}_WITH_INVALID"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon INVALID. Note: Gas passed to sub-call is capped."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(0, opcode(0xFF, callee_address, 0, 0, 0, 0, 0))
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TSTORE(1, 69) + Op.INVALID(),
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+
         return super().__new__(cls, name, bases, classdict)
 
 
@@ -141,7 +140,7 @@ class CallContextTestCases(PytestParameterEnum, metaclass=DynamicCallContextTest
     STATICCALL_CAN_CALL_TLOAD = {
         # TODO: Not a very useful test; consider removing after implementing ethereum/tests
         # staticcall tests
-        "pytest_param": pytest.param(id="staticcalled_context_can_call_tload"),
+        "id": "staticcalled_context_can_call_tload",
         "description": ("A STATICCALL callee can not use transient storage."),
         "caller_bytecode": (
             Op.TSTORE(0, 420)
@@ -154,32 +153,28 @@ class CallContextTestCases(PytestParameterEnum, metaclass=DynamicCallContextTest
     }
 
     def __init__(self, value):
-        test_case = (
-            # env
-            Environment(),
-            # pre
-            {
+        value = {
+            "env": Environment(),
+            "pre": {
                 TestAddress: Account(balance=10**40),
                 caller_address: Account(code=value["caller_bytecode"]),
                 callee_address: Account(code=value["callee_bytecode"]),
             },
-            # txs
-            [
+            "txs": [
                 Transaction(
                     to=caller_address,
                     gas_limit=1_000_000,
                 )
             ],
-            # post
-            {
+            "post": {
                 caller_address: Account(storage=value["expected_caller_storage"]),
                 callee_address: Account(storage=value["expected_callee_storage"]),
             },
-        )
-        super().__init__(value, test_case)
+        } | {k: value[k] for k in value.keys() if k in self.special_keywords()}
+        super().__init__(value)
 
 
-@pytest.mark.parametrize("env,pre,txs,post", CallContextTestCases.as_list())
+@CallContextTestCases.parametrize()
 def test_subcall(
     state_test: StateTestFiller,
     env: Environment,
