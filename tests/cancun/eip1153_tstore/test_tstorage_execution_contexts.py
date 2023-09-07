@@ -14,7 +14,7 @@ from ethereum_test_tools import Opcodes as Op
 from ethereum_test_tools import StateTestFiller, TestAddress, Transaction
 
 from . import PytestParameterEnum
-from .spec import ref_spec_1153
+from .spec import Spec, ref_spec_1153
 
 REFERENCE_SPEC_GIT_PATH = ref_spec_1153.git_path
 REFERENCE_SPEC_VERSION = ref_spec_1153.version
@@ -26,6 +26,8 @@ caller_address = 0x100
 
 # Address of the callee contract
 callee_address = 0x200
+
+PUSH_OPCODE_COST = 3
 
 
 class DynamicCallContextTestCases(EnumMeta):
@@ -85,6 +87,121 @@ class DynamicCallContextTestCases(EnumMeta):
                     + Op.SSTORE(2, Op.TLOAD(1))
                 ),
                 "callee_bytecode": Op.TSTORE(1, 69) + Op.INVALID(),
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+            classdict[f"{opcode._name_}_WITH_STACK_OVERFLOW"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon stack overflow."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(0, opcode(0xFFFF, callee_address, 0, 0, 0, 0, 0))
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TSTORE(1, 69) + Op.PUSH0() * 1025,
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+            classdict[f"{opcode._name_}_WITH_TSTORE_STACK_UNDERFLOW"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon stack underflow because of TSTORE parameters (1)."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(0, opcode(0xFFFF, callee_address, 0, 0, 0, 0, 0))
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TSTORE(1),
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+            classdict[f"{opcode._name_}_WITH_TSTORE_STACK_UNDERFLOW_2"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon stack underflow because of TSTORE parameters (0)."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(0, opcode(0xFFFF, callee_address, 0, 0, 0, 0, 0))
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TSTORE,
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+            classdict[f"{opcode._name_}_WITH_TLOAD_STACK_UNDERFLOW"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon stack underflow because of TLOAD parameters (0)."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(0, opcode(0xFFFF, callee_address, 0, 0, 0, 0, 0))
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TLOAD + Op.TSTORE(0, 1),
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+            classdict[f"{opcode._name_}_WITH_OUT_OF_GAS"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon out of gas during TSTORE. Note: Gas passed to sub-call is "
+                    "capped."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(
+                        0,
+                        opcode(
+                            Spec.TSTORE_GAS_COST + (PUSH_OPCODE_COST * 2) - 1,
+                            callee_address,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                        ),
+                    )
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TSTORE(1, 69),
+                "expected_caller_storage": {0: 0, 1: 420, 2: 420},
+                "expected_callee_storage": {},
+            }
+            classdict[f"{opcode._name_}_WITH_OUT_OF_GAS_2"] = {
+                "description": (
+                    "Caller and callee contracts share transient storage when callee is "
+                    f"called via {opcode._name_} but transient storage usage is discarded "
+                    "from sub-call upon out of gas after TSTORE. Note: Gas passed to sub-call is "
+                    "capped."
+                ),
+                "caller_bytecode": (
+                    Op.TSTORE(0, 420)
+                    + Op.TSTORE(1, 420)
+                    + Op.SSTORE(0, opcode(0xFF, callee_address, 0, 0, 0, 0, 0))
+                    + Op.SSTORE(1, Op.TLOAD(0))
+                    + Op.SSTORE(2, Op.TLOAD(1))
+                ),
+                "callee_bytecode": Op.TSTORE(1, 69) + (Op.PUSH0() + Op.POP) * 512,
                 "expected_caller_storage": {0: 0, 1: 420, 2: 420},
                 "expected_callee_storage": {},
             }
