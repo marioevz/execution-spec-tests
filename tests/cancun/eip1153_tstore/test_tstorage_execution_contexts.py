@@ -257,7 +257,7 @@ class CallContextTestCases(PytestParameterEnum, metaclass=DynamicCallContextTest
     STATICCALL_CAN_CALL_TLOAD = {
         # TODO: Not a very useful test; consider removing after implementing ethereum/tests
         # staticcall tests
-        "id": "staticcalled_context_can_call_tload",
+        "pytest_id": "staticcalled_context_can_call_tload",
         "description": ("A STATICCALL callee can not use transient storage."),
         "caller_bytecode": (
             Op.TSTORE(0, 420)

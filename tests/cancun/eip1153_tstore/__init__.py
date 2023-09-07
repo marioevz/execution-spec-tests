@@ -62,8 +62,8 @@ class PytestParameterEnum(Enum):
             marks = {"marks": value["pytest_marks"]}
         else:
             marks = {}
-        if "id" in value:
-            id = value["id"]
+        if "pytest_id" in value:
+            id = value["pytest_id"]
         else:
             id = self.name.lower()
         return pytest.param(*[value[name] for name in names], id=id, **marks)
@@ -73,7 +73,7 @@ class PytestParameterEnum(Enum):
         """
         Return the special dictionary keywords that are not test parameters.
         """
-        return ["description", "pytest_marks", "id"]
+        return ["description", "pytest_marks", "pytest_id"]
 
     def names(self) -> List[str]:
         """
