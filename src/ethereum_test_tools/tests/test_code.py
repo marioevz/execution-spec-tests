@@ -11,7 +11,7 @@ from semver import Version
 from ethereum_test_forks import Fork, Homestead, Shanghai, forks_from_until, get_deployed_forks
 from evm_transition_tool import GethTransitionTool
 
-from ..code import Case, Code, Conditional, Initcode, Switch, Yul, case_calldata
+from ..code import CalldataCase, Case, Code, Conditional, Initcode, Switch, Yul
 from ..common import Account, Environment, TestAddress, Transaction, to_hash_bytes
 from ..filling import fill_test
 from ..spec import StateTest
@@ -333,8 +333,8 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
             to_hash_bytes(1),
             Switch(
                 cases=[
-                    case_calldata(1, action=Op.SSTORE(0, 1)),
-                    case_calldata(2, action=Op.SSTORE(0, 2)),
+                    CalldataCase(value=1, action=Op.SSTORE(0, 1)),
+                    CalldataCase(value=2, action=Op.SSTORE(0, 2)),
                 ],
                 default_action=b"",
             ),
@@ -435,11 +435,11 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
             to_hash_bytes(1),
             Switch(
                 cases=[
-                    case_calldata(1, action=Op.SSTORE(0, 1)),
-                    case_calldata(2, action=Op.SSTORE(0, 2)),
-                    case_calldata(3, action=Op.SSTORE(0, 3)),
-                    case_calldata(4, action=Op.SSTORE(0, 4)),
-                    case_calldata(5, action=Op.SSTORE(0, 5)),
+                    CalldataCase(value=1, action=Op.SSTORE(0, 1)),
+                    CalldataCase(value=2, action=Op.SSTORE(0, 2)),
+                    CalldataCase(value=3, action=Op.SSTORE(0, 3)),
+                    CalldataCase(value=4, action=Op.SSTORE(0, 4)),
+                    CalldataCase(value=5, action=Op.SSTORE(0, 5)),
                 ],
                 default_action=Op.SSTORE(0, 6),
             ),
@@ -465,11 +465,11 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
             to_hash_bytes(3),
             Switch(
                 cases=[
-                    case_calldata(1, action=Op.SSTORE(0, 1)),
-                    case_calldata(2, action=Op.SSTORE(0, 2)),
-                    case_calldata(3, action=Op.SSTORE(0, 3)),
-                    case_calldata(4, action=Op.SSTORE(0, 4)),
-                    case_calldata(5, action=Op.SSTORE(0, 5)),
+                    CalldataCase(value=1, action=Op.SSTORE(0, 1)),
+                    CalldataCase(value=2, action=Op.SSTORE(0, 2)),
+                    CalldataCase(value=3, action=Op.SSTORE(0, 3)),
+                    CalldataCase(value=4, action=Op.SSTORE(0, 4)),
+                    CalldataCase(value=5, action=Op.SSTORE(0, 5)),
                 ],
                 default_action=Op.SSTORE(0, 6),
             ),

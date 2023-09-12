@@ -2,11 +2,12 @@
 Code related utilities and classes.
 """
 from .code import Code
-from .generators import Case, CodeGasMeasure, Conditional, Initcode, Switch, case_calldata
+from .generators import CalldataCase, Case, CodeGasMeasure, Conditional, Initcode, Switch
 from .yul import Yul, YulCompiler
 
 __all__ = (
     "Case",
+    "CalldataCase",
     "Code",
     "CodeGasMeasure",
     "Conditional",
@@ -14,5 +15,4 @@ __all__ = (
     "Switch",
     "Yul",
     "YulCompiler",
-    "case_calldata",
 )

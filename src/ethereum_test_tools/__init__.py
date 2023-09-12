@@ -4,6 +4,7 @@ tests.
 """
 
 from .code import (
+    CalldataCase,
     Case,
     Code,
     CodeGasMeasure,
@@ -12,7 +13,6 @@ from .code import (
     Switch,
     Yul,
     YulCompiler,
-    case_calldata,
 )
 from .common import (
     AccessList,
@@ -69,6 +69,7 @@ __all__ = (
     "BlockchainTest",
     "BlockchainTestFiller",
     "Case",
+    "CalldataCase",
     "Code",
     "CodeGasMeasure",
     "Conditional",
@@ -99,7 +100,6 @@ __all__ = (
     "Yul",
     "YulCompiler",
     "add_kzg_version",
-    "case_calldata",
     "ceiling_division",
     "compute_create_address",
     "compute_create2_address",
