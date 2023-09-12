@@ -240,7 +240,7 @@ class Conditional(Code):
 
 
 @dataclass
-class BytecodeCase:
+class Case:
     """
     Small helper class to represent a single case in a switch-case statement.
     """
@@ -254,6 +254,24 @@ class BytecodeCase:
         """
         self.condition = to_bytes(self.condition)
         self.action = to_bytes(self.action)
+
+
+def case_calldata(
+    value: int | str | bytes | SupportsBytes,
+    action: str | bytes | SupportsBytes,
+    position: int = 0,
+):
+    """
+    Helper function to generate a single calldata-conditioned case in a switch-case statement.
+    By default the calldata is read from position zero, but this can be overridden
+    by using the position parameter.
+    """
+    if not isinstance(value, int):
+        value = Op.PUSH32(to_bytes(value))
+    return Case(
+        condition=Op.EQ(Op.CALLDATALOAD(position), value),
+        action=action,
+    )
 
 
 @dataclass(kw_only=True)
@@ -276,9 +294,9 @@ class Switch(Code):
     executed.
     """
 
-    cases: List[BytecodeCase]
+    cases: List[Case]
     """
-    A list of BytecodeCase: The first element with a condition that evaluates
+    A list of Case: The first element with a condition that evaluates
     to a non-zero value is the one that is executed.
     """
 
