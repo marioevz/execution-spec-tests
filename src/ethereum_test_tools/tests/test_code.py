@@ -365,9 +365,7 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
         pytest.param(
             to_hash_bytes(1),
             Switch(
-                cases=[
-                    Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))
-                ],
+                cases=[Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))],
                 default_action=Op.SSTORE(0, 3),
             ),
             {0: 1},
@@ -376,9 +374,7 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
         pytest.param(
             to_hash_bytes(0),
             Switch(
-                cases=[
-                    Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))
-                ],
+                cases=[Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))],
                 default_action=Op.SSTORE(0, 3),
             ),
             {0: 3},
@@ -623,9 +619,7 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
         pytest.param(
             to_hash_bytes(1),
             Switch(
-                cases=[
-                    Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))
-                ],
+                cases=[Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))],
                 default_action=Op.PUSH32(2**256 - 1) * 8,
             ),
             {0: 1},
@@ -634,9 +628,7 @@ def test_opcodes_if(conditional_bytecode: bytes, expected: bytes):
         pytest.param(
             to_hash_bytes(1),
             Switch(
-                cases=[
-                    Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))
-                ],
+                cases=[Case(condition=Op.EQ(Op.CALLDATALOAD(0), 1), action=Op.SSTORE(0, 1))],
                 default_action=Op.PUSH32(2**256 - 1) * 2048,
             ),
             {0: 1},
