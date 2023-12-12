@@ -40,7 +40,7 @@ class FixtureFormats(Enum):
     Helper class to define fixture formats.
     """
 
-    UNSET = "unset"
+    UNSET_TEST_FORMAT = "unset_test_format"
     STATE_TEST = "state_test"
     STATE_TEST_HIVE = "state_test_hive"
     BLOCKCHAIN_TEST = "blockchain_test"
@@ -73,7 +73,7 @@ class FixtureFormats(Enum):
 
         Used to add a description to the generated pytest marks.
         """
-        if format == cls.UNSET:
+        if format == cls.UNSET_TEST_FORMAT:
             return "Unknown fixture format; it has not been set."
         elif format == cls.STATE_TEST:
             return "Tests that generate a state test fixture."
