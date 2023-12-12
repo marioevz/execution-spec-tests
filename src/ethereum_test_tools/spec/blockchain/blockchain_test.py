@@ -392,8 +392,8 @@ class BlockchainTest(BaseTest):
         if self.fixture_format == FixtureFormats.BLOCKCHAIN_TEST_HIVE:
             if fork.engine_forkchoice_updated_version() is None:
                 raise Exception(
-                    "Hive fixture requested but no forkchoice update is defined."
-                    "This test case should never have been executed."
+                    "A hive fixture was requested but no forkchoice update is defined. "
+                    "The framework should never try to execute this test case."
                 )
             return self.make_hive_fixture(t8n, fork, eips)
         elif self.fixture_format == FixtureFormats.BLOCKCHAIN_TEST:
