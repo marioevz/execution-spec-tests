@@ -865,13 +865,6 @@ class FixtureCommon(BaseFixture):
     Base Ethereum test fixture fields class.
     """
 
-    info: Dict[str, str] = field(
-        default_factory=dict,
-        json_encoder=JSONEncoder.Field(
-            name="_info",
-            to_json=True,
-        ),
-    )
     name: str = field(
         default="",
         json_encoder=JSONEncoder.Field(
