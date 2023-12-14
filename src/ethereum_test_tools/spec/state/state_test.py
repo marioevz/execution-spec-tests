@@ -8,13 +8,15 @@ from typing import Callable, Generator, List, Mapping, Optional, Type
 from ethereum_test_forks import Fork
 from evm_transition_tool import FixtureFormats, TransitionTool
 
-from ...common import Environment, Number, Transaction
+from ...common import Account, Address, Alloc, Environment, Number, Transaction
 from ...common.constants import EngineAPIError
 from ...common.json import to_json
 from ..base.base_test import BaseFixture, BaseTest, verify_post_alloc
 from ..blockchain.blockchain_test import Block, BlockchainTest
 from ..debugging import print_traces
 from .types import Fixture, FixtureForkPost
+
+BEACON_ROOTS_ADDRESS = Address(0x000F3DF6D732807EF1319FB7B8BB8522D0BEAC02)
 
 
 @dataclass(kw_only=True)
@@ -107,9 +109,15 @@ class StateTest(BaseTest):
         """
         env = self.env.set_fork_requirements(fork)
         tx = self.tx.with_signature_and_sender()
+        pre_alloc = Alloc.merge(
+            Alloc(
+                fork.pre_allocation(block_number=env.number, timestamp=Number(env.timestamp)),
+            ),
+            Alloc(self.pre),
+        )
 
         next_alloc, result = t8n.evaluate(
-            alloc=to_json(self.pre),
+            alloc=to_json(pre_alloc),
             txs=to_json([tx]),
             env=to_json(env),
             fork_name=fork.fork(block_number=Number(env.number), timestamp=Number(env.timestamp)),
@@ -125,9 +133,24 @@ class StateTest(BaseTest):
             print_traces(t8n.get_traces())
             raise e
 
+        # StateTest does not execute any beacon root contract logic, but we still need to
+        # set the beacon root to the correct value, so we copy the beacon root contract storage
+        # from the post state into the pre state and the transaction is executed in isolation
+        # properly.
+        if (
+            str(BEACON_ROOTS_ADDRESS) in next_alloc
+            and "storage" in next_alloc[str(BEACON_ROOTS_ADDRESS)]
+        ):
+            beacon_roots_storage_account = Account(
+                storage=next_alloc[str(BEACON_ROOTS_ADDRESS)]["storage"]
+            )
+            pre_alloc = Alloc.merge(
+                pre_alloc, Alloc({BEACON_ROOTS_ADDRESS: beacon_roots_storage_account})
+            )
+
         return Fixture(
             env=env,
-            pre_state=self.pre,
+            pre_state=pre_alloc,
             post={
                 fork.fork(block_number=Number(env.number), timestamp=Number(env.timestamp)): [
                     FixtureForkPost.collect(

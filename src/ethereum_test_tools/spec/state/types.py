@@ -12,7 +12,6 @@ from ...common.conversions import BytesConvertible, FixedSizeBytesConvertible
 from ...common.json import JSONEncoder, field, to_json
 from ...common.types import (
     AccessList,
-    Account,
     AddrAA,
     Address,
     Alloc,
@@ -186,6 +185,9 @@ class FixtureForkPost:
         transition_tool_result: Dict[str, Any],
         transaction: Transaction,
     ) -> "FixtureForkPost":
+        """
+        Collects the post state of a single Fork from the transition tool result.
+        """
         state_root = Hash(transition_tool_result["stateRoot"])
         logs_hash = Hash(transition_tool_result["logsHash"])
         indexes = FixtureForkPostIndexes()
@@ -209,7 +211,7 @@ class Fixture(BaseFixture):
         ),
     )
 
-    pre_state: Mapping[str, Account] = field(
+    pre_state: Alloc = field(
         json_encoder=JSONEncoder.Field(
             name="pre",
             cast_type=Alloc,
