@@ -4,7 +4,7 @@ StateTest types
 import json
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, TextIO
 
 from evm_transition_tool import FixtureFormats
 
@@ -254,7 +254,7 @@ class Fixture(BaseFixture):
         return self._json
 
     @classmethod
-    def collect_into_file(cls, fixture_file_path: Path, fixtures: Dict[str, "BaseFixture"]):
+    def collect_into_file(cls, fd: TextIO, fixtures: Dict[str, "BaseFixture"]):
         """
         For StateTest format, we simply join the json fixtures into a single file.
 
@@ -265,8 +265,7 @@ class Fixture(BaseFixture):
         for name, fixture in fixtures.items():
             assert isinstance(fixture, Fixture), f"Invalid fixture type: {type(fixture)}"
             json_fixtures[name] = fixture.to_json()
-        with open(fixture_file_path, "w") as f:
-            json.dump(json_fixtures, f, indent=4)
+        json.dump(json_fixtures, fd, indent=4)
 
     @classmethod
     def output_base_dir_name(cls) -> Path:
