@@ -20,7 +20,7 @@ from ..helpers import (
     transition_fork_from_to,
     transition_fork_to,
 )
-from ..transition_base_fork import transition_fork
+from ..transition_base_fork import TransitionFork
 
 FIRST_DEPLOYED = Frontier
 LAST_DEPLOYED = Shanghai
@@ -64,6 +64,8 @@ def test_transition_forks():
     assert ParisToShanghaiAtTime15k.fork_at(0, 15_000) == Shanghai
     assert ParisToShanghaiAtTime15k.fork_at() == Paris
     assert ParisToShanghaiAtTime15k.fork_at(10_000_000, 14_999) == Paris
+
+    assert BerlinToLondonAt5 >= Berlin
 
 
 def test_forks_from():  # noqa: D103
@@ -190,8 +192,7 @@ class PreAllocFork(PrePreAllocFork):
         )
 
 
-@transition_fork(to_fork=PreAllocFork, at_timestamp=15_000)
-class PreAllocTransitionFork(PrePreAllocFork):
+class PreAllocTransitionFork(TransitionFork, PreAllocFork, at_timestamp=15_000):
     """
     PrePreAllocFork to PreAllocFork transition at Timestamp 15k
     """

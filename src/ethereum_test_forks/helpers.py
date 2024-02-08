@@ -1,13 +1,14 @@
 """
 Helper methods to resolve forks during test filling
 """
-from typing import List, Optional
+
+from typing import List, Optional, Type
 
 from semver import Version
 
 from .base_fork import BaseFork, Fork
 from .forks import forks, transition
-from .transition_base_fork import TransitionBaseClass
+from .transition_base_fork import TransitionFork
 
 
 class InvalidForkError(Exception):
@@ -87,29 +88,29 @@ def get_closest_fork_with_solc_support(fork: Fork, solc_version: Version) -> Opt
     )
 
 
-def get_transition_forks() -> List[Fork]:
+def get_transition_forks() -> List[Type[TransitionFork]]:
     """
     Returns all the transition forks
     """
-    transition_forks: List[Fork] = []
+    transition_forks: List[Type[TransitionFork]] = []
 
     for fork_name in transition.__dict__:
         fork = transition.__dict__[fork_name]
         if not isinstance(fork, type):
             continue
-        if issubclass(fork, TransitionBaseClass) and issubclass(fork, BaseFork):
+        if issubclass(fork, TransitionFork) and fork != TransitionFork:
             transition_forks.append(fork)
 
     return transition_forks
 
 
-def transition_fork_from_to(fork_from: Fork, fork_to: Fork) -> Fork | None:
+def transition_fork_from_to(fork_from: Fork, fork_to: Fork) -> Type[TransitionFork] | None:
     """
     Returns the transition fork that transitions to and from the specified
     forks.
     """
     for transition_fork in get_transition_forks():
-        if not issubclass(transition_fork, TransitionBaseClass):
+        if not issubclass(transition_fork, TransitionFork):
             continue
         if (
             transition_fork.transitions_to() == fork_to
@@ -120,13 +121,13 @@ def transition_fork_from_to(fork_from: Fork, fork_to: Fork) -> Fork | None:
     return None
 
 
-def transition_fork_to(fork_to: Fork) -> List[Fork]:
+def transition_fork_to(fork_to: Fork) -> List[Type[TransitionFork]]:
     """
     Returns the transition fork that transitions to the specified fork.
     """
-    transition_forks: List[Fork] = []
+    transition_forks: List[Type[TransitionFork]] = []
     for transition_fork in get_transition_forks():
-        if not issubclass(transition_fork, TransitionBaseClass):
+        if not issubclass(transition_fork, TransitionFork):
             continue
         if transition_fork.transitions_to() == fork_to:
             transition_forks.append(transition_fork)
