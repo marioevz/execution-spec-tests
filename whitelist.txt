@@ -207,6 +207,8 @@ ommers
 opc
 oprypin
 origin
+P1
+P2
 parseable
 pathlib
 pdb
