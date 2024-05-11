@@ -30,6 +30,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     RootModel,
     TypeAdapter,
     computed_field,
@@ -53,7 +54,7 @@ from .base_types import (
     NumberBoundTypeVar,
     ZeroPaddedHexNumber,
 )
-from .constants import TestPrivateKey
+from .constants import TestPrivateKey, TestPrivateKey2
 from .conversions import BytesConvertible, FixedSizeBytesConvertible, NumberConvertible
 
 
@@ -487,12 +488,54 @@ class Account(CopyValidateModel):
         return cls(**kwargs)
 
 
+class Sender(Address):
+    """
+    Address of the sender of a transaction.
+    """
+
+    key: Hash | None
+    nonce: Number
+
+    def __new__(
+        cls,
+        *,
+        address: FixedSizeBytesConvertible | Address | None = None,
+        key: FixedSizeBytesConvertible | None = None,
+        nonce: NumberConvertible = 0,
+    ):
+        """
+        Init the sender.
+        """
+        if address is None:
+            if key is None:
+                raise ValueError("impossible to initialize sender without address")
+            address = Address(PrivateKey(Hash(key)).public_key.format(compressed=False)[1:])
+        instance = super(Sender, cls).__new__(cls, address)
+        instance.key = Hash(key) if key is not None else None
+        instance.nonce = Number(nonce)
+        return instance
+
+
+def senders_iter() -> Iterator[Sender]:
+    """
+    Returns an iterator over senders.
+    """
+    return iter(
+        Sender(key=TestPrivateKey + i if i != 1 else TestPrivateKey2, nonce=0) for i in count(0)
+    )
+
+
+start_contract_address = 0x100
+
+
 class Alloc(RootModel[Dict[Address, Account | None]]):
     """
     Allocation of accounts in the state, pre and post test execution.
     """
 
     root: Dict[Address, Account | None] = Field(default_factory=dict, validate_default=True)
+
+    senders_iter: Iterator[Sender] = PrivateAttr(default_factory=senders_iter)
 
     @dataclass(kw_only=True)
     class UnexpectedAccount(Exception):
@@ -634,6 +677,45 @@ class Alloc(RootModel[Dict[Address, Account | None]]):
                     account.check_alloc(address, got_account)
                 else:
                     raise Alloc.MissingAccount(address)
+
+    def deploy_contract(
+        self,
+        *,
+        code: BytesConvertible,
+        storage: Storage
+        | Dict[StorageKeyValueTypeConvertible, StorageKeyValueTypeConvertible] = {},
+        balance: NumberConvertible = 0,
+        nonce: NumberConvertible = 1,
+    ) -> Address:
+        """
+        Deploy a contract to the allocation.
+        """
+        contract_address = start_contract_address
+        while contract_address in self:
+            contract_address += 1
+
+        assert Number(nonce) < 1, "impossible to deploy contract with nonce lower than one"
+
+        self[contract_address] = Account(
+            nonce=nonce,
+            balance=balance,
+            code=code,
+            storage=storage,
+        )
+
+        return Address(contract_address)
+
+    def fund_sender(self, amount: NumberConvertible) -> Sender:
+        """
+        Fund an account with a given amount to be able to afford transactions.
+        """
+        assert self.senders_iter is not None
+        sender = next(self.senders_iter)
+        self[sender] = Account(
+            nonce=0,
+            balance=amount,
+        )
+        return sender
 
 
 class WithdrawalGeneric(CamelModel, Generic[NumberBoundTypeVar]):
@@ -892,6 +974,7 @@ class Transaction(TransactionGeneric[HexNumber], TransactionTransitionToolConver
     data: Bytes = Field(Bytes(b""), alias="input")
 
     secret_key: Hash | None = None
+    sender: Sender | None = Field(None, exclude=True)
     error: List[TransactionException] | TransactionException | None = Field(None, exclude=True)
 
     protected: bool = Field(True, exclude=True)
@@ -948,7 +1031,10 @@ class Transaction(TransactionGeneric[HexNumber], TransactionTransitionToolConver
             raise Transaction.InvalidSignaturePrivateKey()
 
         if self.v is None and self.secret_key is None:
-            self.secret_key = Hash(TestPrivateKey)
+            if self.sender is not None:
+                self.secret_key = self.sender.key
+            else:
+                self.secret_key = Hash(TestPrivateKey)
 
         if "ty" not in self.model_fields_set:
             # Try to deduce transaction type from included fields
@@ -967,6 +1053,10 @@ class Transaction(TransactionGeneric[HexNumber], TransactionTransitionToolConver
 
         if self.ty >= 2 and self.max_priority_fee_per_gas is None:
             self.max_priority_fee_per_gas = 0
+
+        if "nonce" not in self.model_fields_set and self.sender is not None:
+            self.nonce = self.sender.nonce
+            self.sender.nonce += 1
 
     def with_error(
         self, error: List[TransactionException] | TransactionException

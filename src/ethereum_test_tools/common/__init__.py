@@ -12,17 +12,7 @@ from .base_types import (
     Number,
     ZeroPaddedHexNumber,
 )
-from .constants import (
-    AddrAA,
-    AddrBB,
-    EmptyOmmersRoot,
-    EmptyTrieRoot,
-    EngineAPIError,
-    TestAddress,
-    TestAddress2,
-    TestPrivateKey,
-    TestPrivateKey2,
-)
+from .constants import AddrAA, AddrBB, EmptyOmmersRoot, EmptyTrieRoot, EngineAPIError
 from .helpers import (
     TestParameterGroup,
     add_kzg_version,
@@ -65,11 +55,7 @@ __all__ = (
     "Number",
     "Removable",
     "Storage",
-    "TestAddress",
-    "TestAddress2",
     "TestParameterGroup",
-    "TestPrivateKey",
-    "TestPrivateKey2",
     "Transaction",
     "Withdrawal",
     "ZeroPaddedHexNumber",
