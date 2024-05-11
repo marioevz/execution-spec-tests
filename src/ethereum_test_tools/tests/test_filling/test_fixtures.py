@@ -16,7 +16,7 @@ from evm_transition_tool import FixtureFormats, GethTransitionTool
 
 from ... import Header
 from ...code import Yul
-from ...common import Account, Environment, Hash, TestAddress, Transaction
+from ...common import Account, Alloc, Environment, Hash, Transaction
 from ...exceptions import TransactionException
 from ...spec import BlockchainTest, StateTest
 from ...spec.blockchain.types import Block, Fixture, FixtureCommon
@@ -79,11 +79,10 @@ def test_check_helper_fixtures():
 def test_make_genesis(fork: Fork, hash: bytes):  # noqa: D103
     env = Environment()
 
-    pre = {
-        "0x1000000000000000000000000000000000000000": Account(
-            balance=0x0BA1A9CE0BA1A9CE,
-            code=Yul(
-                """
+    pre = Alloc()
+    pre.deploy_contract(
+        Yul(
+            """
             {
                 function f(a, b) -> c {
                     c := add(a, b)
@@ -93,11 +92,11 @@ def test_make_genesis(fork: Fork, hash: bytes):  # noqa: D103
                 return(0, 32)
             }
             """,
-                fork=fork,
-            ),
+            fork=fork,
         ),
-        TestAddress: Account(balance=0x0BA1A9CE0BA1A9CE),
-    }
+        balance=0x0BA1A9CE0BA1A9CE,
+    )
+    pre.fund_sender(0x0BA1A9CE0BA1A9CE)
 
     t8n = GethTransitionTool()
     fixture = BlockchainTest(

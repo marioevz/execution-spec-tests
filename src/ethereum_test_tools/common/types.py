@@ -30,7 +30,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    PrivateAttr,
     RootModel,
     TypeAdapter,
     computed_field,
@@ -509,21 +508,20 @@ class Sender(Address):
         if address is None:
             if key is None:
                 raise ValueError("impossible to initialize sender without address")
-            address = Address(PrivateKey(Hash(key)).public_key.format(compressed=False)[1:])
+            private_key = PrivateKey(Hash(key))
+            public_key = private_key.public_key
+            address = Address(keccak256(public_key.format(compressed=False)[1:])[32 - 20 :])
         instance = super(Sender, cls).__new__(cls, address)
         instance.key = Hash(key) if key is not None else None
         instance.nonce = Number(nonce)
         return instance
 
 
-def senders_iter() -> Iterator[Sender]:
-    """
-    Returns an iterator over senders.
-    """
-    return iter(
-        Sender(key=TestPrivateKey + i if i != 1 else TestPrivateKey2, nonce=0) for i in count(0)
-    )
-
+MAX_SENDERS = 50
+SENDERS_ITER = iter(
+    Sender(key=TestPrivateKey + i if i != 1 else TestPrivateKey2, nonce=0) for i in count(0)
+)
+SENDERS = [next(SENDERS_ITER) for _ in range(MAX_SENDERS)]
 
 start_contract_address = 0x100
 
@@ -534,8 +532,6 @@ class Alloc(RootModel[Dict[Address, Account | None]]):
     """
 
     root: Dict[Address, Account | None] = Field(default_factory=dict, validate_default=True)
-
-    senders_iter: Iterator[Sender] = PrivateAttr(default_factory=senders_iter)
 
     @dataclass(kw_only=True)
     class UnexpectedAccount(Exception):
@@ -680,8 +676,8 @@ class Alloc(RootModel[Dict[Address, Account | None]]):
 
     def deploy_contract(
         self,
-        *,
         code: BytesConvertible,
+        *,
         storage: Storage
         | Dict[StorageKeyValueTypeConvertible, StorageKeyValueTypeConvertible] = {},
         balance: NumberConvertible = 0,
@@ -694,7 +690,7 @@ class Alloc(RootModel[Dict[Address, Account | None]]):
         while contract_address in self:
             contract_address += 1
 
-        assert Number(nonce) < 1, "impossible to deploy contract with nonce lower than one"
+        assert Number(nonce) >= 1, "impossible to deploy contract with nonce lower than one"
 
         self[contract_address] = Account(
             nonce=nonce,
@@ -709,13 +705,14 @@ class Alloc(RootModel[Dict[Address, Account | None]]):
         """
         Fund an account with a given amount to be able to afford transactions.
         """
-        assert self.senders_iter is not None
-        sender = next(self.senders_iter)
-        self[sender] = Account(
-            nonce=0,
-            balance=amount,
-        )
-        return sender
+        for sender in SENDERS:
+            if sender not in self:
+                self[sender] = Account(
+                    nonce=0,
+                    balance=amount,
+                )
+                return sender
+        raise ValueError("no more senders available")
 
 
 class WithdrawalGeneric(CamelModel, Generic[NumberBoundTypeVar]):
