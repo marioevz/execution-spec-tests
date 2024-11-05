@@ -1233,5 +1233,5 @@ class Requests:
         s: bytes = b""
         for i, r in enumerate(self.requests_list):
             # Append the index of the request type to the request data before hashing
-            s = s + Bytes(bytes([i]) + r).sha256()
+            s = s + Bytes(bytes([i]) + r[1:]).sha256()
         return Bytes(s).sha256()

@@ -5674,6 +5674,47 @@ class Opcodes(Opcode, Enum):
     Source: [evm.codes/#FF](https://www.evm.codes/#FF)
     """
 
+    PAY = Opcode(
+        0xF9,
+        popped_stack_items=2,
+        kwargs=["address", "value"],
+    )
+    """
+    PAY(address, value)
+    ----
+
+    Description
+    ----
+    taking two stack parameters, addr and val, that transfers val wei to the address addr without
+    calling any of its functions.
+
+    Inputs
+    ----
+    - address: the account to make the transfer to
+    - value: amount in wei to transfer
+
+    Fork
+    ----
+    Prague
+
+    Gas
+    ----
+    The gas cost for PAY is the sum of the following:
+
+    Is addr in accessed_addresses?
+        If yes, WARM_STORAGE_READ_COST;
+        Otherwise, COLD_ACCOUNT_ACCESS_COST.
+    Does addr exist or is val zero?
+        If yes to either, zero;
+        Otherwise, GAS_NEW_ACCOUNT.
+    Is val zero?
+        If yes, zero;
+        Otherwise, GAS_CALL_VALUE.
+
+
+    Source: [EIP-7069](https://eips.ethereum.org/EIPS/eip-5920)
+    """
+
 
 _push_opcodes_byte_list: List[Opcode] = [
     Opcodes.PUSH1,
