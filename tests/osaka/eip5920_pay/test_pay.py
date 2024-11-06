@@ -41,3 +41,43 @@ def test_pay(
             )
         },
     )
+
+
+def test_pay_return(
+    state_test: StateTestFiller,
+    pre: Alloc,
+):
+    """Test the pay opcode updates the balance but does not execute any code."""
+    # Deploy the contract.
+    value_amount = 1
+    return_contract = pre.deploy_contract(Op.RETURN(0, 1))
+    recipient_contract = pre.deploy_contract(Op.STOP)
+    contract_address = pre.deploy_contract(
+        Op.CALL(address=return_contract)
+        + Op.SSTORE(0, Op.RETURNDATASIZE)
+        + Op.PAY(recipient_contract, value_amount)
+        + Op.SSTORE(1, Op.RETURNDATASIZE)
+        + Op.STOP
+    )
+    sender = pre.fund_eoa()
+
+    tx = Transaction(
+        to=contract_address,
+        value=value_amount,
+        sender=sender,
+        gas_limit=100_000,
+    )
+
+    state_test(
+        pre=pre,
+        tx=tx,
+        post={
+            contract_address: Account(
+                balance=value_amount,
+                storage={
+                    0: 1,
+                    1: 1,
+                },
+            )
+        },
+    )
