@@ -40,7 +40,6 @@
     },
     "Osaka": {
         "git_url": "https://github.com/gurukamath/execution-specs.git",
-        "branch": "forks/osaka",
-        "commit": "b407a1b49fc85266535a5c927be248eab5aef049"
+        "branch": "forks/osaka"
     }
 }
