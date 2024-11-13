@@ -3,6 +3,7 @@ abstract: Minimal test example
     Simple state test using minimal components.
 
 """
+
 import pytest
 
 from ethereum_test_tools import Account, Alloc
@@ -30,7 +31,7 @@ def test_simple(
         to=contract_address,
         sender=sender,
         gas_limit=100_000,
-        value=1,
+        value=2,
     )
 
     # Check the post state was updated
