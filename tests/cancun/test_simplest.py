@@ -31,7 +31,7 @@ def test_simple(
         to=contract_address,
         sender=sender,
         gas_limit=100_000,
-        value=2,
+        value=1,
     )
 
     # Check the post state was updated
